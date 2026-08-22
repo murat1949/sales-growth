@@ -421,11 +421,15 @@ async function loadFromSupabase(){
       sales:Number(x.sales||0)
     };
     setStatus('● Supabase подключен', true);
-    render();
+    try{
+      render();
+    }catch(uiError){
+      console.error('Ошибка интерфейса:', uiError);
+    }
   }catch(e){
-    console.error(e);
+    console.error('Ошибка Supabase:', e);
     setStatus('● ошибка Supabase', false);
-    render();
+    try{ render(); }catch(uiError){ console.error('Ошибка интерфейса:', uiError); }
   }
 }
 
@@ -476,7 +480,7 @@ function renderMarketing(){
    ['Лид → передано',cLH.toFixed(1)+'%']
  ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="val">${typeof x[1]==='number'?x[1].toLocaleString('ru-RU'):x[1]}</div></div>`).join('');
 
- marketingFlow.innerHTML=[
+ document.getElementById('marketingFlow').innerHTML=[
    ['Внимание',data.attention,'старт'],
    ['Интерес',data.interest,cAI.toFixed(1)+'%'],
    ['Лиды',data.leads,cIL.toFixed(1)+'%'],
@@ -489,11 +493,11 @@ function renderMarketing(){
    {name:'Лид → Передано',v:cLH}
  ];
  const worst=steps.reduce((a,b)=>a.v<b.v?a:b);
- marketingDiagnosis.innerHTML=
+ document.getElementById('marketingDiagnosis').innerHTML=
    `<div class="alert red"><b>Главная зона внимания:</b><br>${worst.name} — ${worst.v.toFixed(1)}%</div>`+
    `<div class="alert green"><b>Передано в продажи:</b><br>${data.handoff} из ${data.leads} лидов (${cLH.toFixed(1)}%).</div>`;
 
- marketingConversions.innerHTML=steps.map(s=>
+ document.getElementById('marketingConversions').innerHTML=steps.map(s=>
    `<div class="mkt-conv"><div class="mkt-conv-head"><span>${s.name}</span><b>${s.v.toFixed(1)}%</b></div>`+
    `<div class="mkt-bar"><span style="width:${Math.min(100,s.v)}%"></span></div></div>`
  ).join('');
@@ -503,7 +507,7 @@ function renderMarketing(){
  if(cIL<20) actions.push('Проверить оффер, посадочную страницу и понятность следующего шага для клиента.');
  if(cLH<50) actions.push('Проверить обработку лидов и причину, почему лиды не передаются в продажи.');
  if(!actions.length) actions.push('Критических просадок по текущим контрольным порогам не видно. Сравнить показатели с предыдущим периодом.');
- marketingActions.innerHTML=actions.map((x,i)=>`<div class="mkt-action"><b>${i+1}.</b> ${x}</div>`).join('');
+ document.getElementById('marketingActions').innerHTML=actions.map((x,i)=>`<div class="mkt-action"><b>${i+1}.</b> ${x}</div>`).join('');
 }
 
 function render(){
