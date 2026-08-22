@@ -174,6 +174,34 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   #funnelLoss .alert,.alert{overflow-wrap:anywhere}
 }
 
+
+/* ===== Graphic funnel ===== */
+.graphic-funnel-card{overflow:hidden}
+.graphic-funnel{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 2px}
+.gf-row{
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:white;
+  background:var(--blue);
+  clip-path:polygon(5% 0,95% 0,90% 100%,10% 100%);
+  padding:8px 18px;
+  line-height:1.1;
+  box-shadow:0 4px 12px rgba(15,23,42,.08)
+}
+.gf-row strong{display:block;font-size:25px;margin-bottom:3px}
+.gf-row span{display:block;font-size:12px;font-weight:700}
+.gf-row small{display:block;font-size:10px;margin-top:4px;opacity:.9}
+.gf-note{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+@media(max-width:700px){
+  .graphic-funnel{gap:5px}
+  .gf-row{min-height:58px;padding:7px 10px}
+  .gf-row strong{font-size:23px}
+  .gf-row span{font-size:11px}
+}
+
 </style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
@@ -187,12 +215,22 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <section id="dash" class="section active">
 <div class="grid kpis" id="kpis"></div>
 <div class="card" style="margin-top:13px"><h3>Воронка сегодня</h3><div class="funnel" id="funnelView"></div></div>
+<div class="card graphic-funnel-card" style="margin-top:13px">
+<h3>Воронка продаж</h3>
+<div id="graphicFunnelMain" class="graphic-funnel"></div>
+<div class="gf-note">Ширина уровней — визуальная. Цифры и конверсии — реальные данные из Supabase.</div>
+</div>
 <div class="grid two" style="margin-top:13px"><div class="card"><h3>Конверсии</h3><table id="convTable"></table></div>
 <div class="card"><h3>Диагностика</h3><div id="diagnosis"></div></div></div>
 </section>
 
 <section id="funnel" class="section">
 <div class="grid kpis" id="funnelKpis"></div>
+<div class="card graphic-funnel-card" style="margin-top:13px">
+  <h3>Графическая воронка</h3>
+  <div id="graphicFunnelDetail" class="graphic-funnel"></div>
+  <div class="gf-note">Чем ниже уровень, тем ближе клиент к продаже.</div>
+</div>
 <div class="card" style="margin-top:13px">
   <h3>Воронка продаж сегодня</h3>
   <div class="funnel" id="funnelDetail"></div>
@@ -335,7 +373,32 @@ async function loadFromSupabase(){
   }
 }
 
+
+function renderGraphicFunnels(){
+ const steps=[
+  {name:'Внимание',value:data.attention,conv:null,width:100},
+  {name:'Интерес',value:data.interest,conv:pct(data.attention,data.interest),width:88},
+  {name:'Лиды',value:data.leads,conv:pct(data.interest,data.leads),width:76},
+  {name:'Передано',value:data.handoff,conv:pct(data.leads,data.handoff),width:64},
+  {name:'Переговоры',value:data.talks,conv:pct(data.handoff,data.talks),width:52},
+  {name:'Продажи',value:data.sales,conv:pct(data.talks,data.sales),width:40}
+ ];
+ const markup=steps.map((s,i)=>`
+   <div class="gf-row" style="width:${s.width}%">
+     <div>
+       <strong>${Number(s.value).toLocaleString('ru-RU')}</strong>
+       <span>${s.name}</span>
+       <small>${i===0?'СТАРТ':'конверсия с предыдущего этапа '+s.conv+'%'}</small>
+     </div>
+   </div>`).join('');
+ const a=document.getElementById('graphicFunnelMain');
+ const b=document.getElementById('graphicFunnelDetail');
+ if(a)a.innerHTML=markup;
+ if(b)b.innerHTML=markup;
+}
+
 function render(){
+ renderGraphicFunnels();
  document.getElementById('kpis').innerHTML=names.map(([k,n])=>`<div class="card"><div class="muted">${n}</div><div class="val">${data[k].toLocaleString('ru-RU')}</div></div>`).join('');
  document.getElementById('funnelView').innerHTML=names.map(([k,n])=>`<div class="stage"><strong>${data[k].toLocaleString('ru-RU')}</strong><b>${n}</b><span>${k==='attention'?'старт': ''}</span></div>`).join('');
  let rows=[['Внимание → Интерес',pct(data.attention,data.interest)],['Интерес → Лид',pct(data.interest,data.leads)],['Лид → Передано',pct(data.leads,data.handoff)],['Передано → Продажа',pct(data.handoff,data.sales)]];
