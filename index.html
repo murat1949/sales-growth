@@ -179,27 +179,28 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 .graphic-funnel-card{overflow:hidden}
 .graphic-funnel{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 2px}
 .gf-row{
-  min-height:64px;
+  min-height:52px;
   display:flex;
   align-items:center;
   justify-content:center;
   text-align:center;
   color:white;
-  background:var(--blue);
-  clip-path:polygon(5% 0,95% 0,90% 100%,10% 100%);
+  background:linear-gradient(135deg,#6d28d9 0%,#8b5cf6 55%,#c026d3 100%);
+  clip-path:polygon(4% 0,96% 0,91% 100%,9% 100%);
   padding:8px 18px;
   line-height:1.1;
   box-shadow:0 4px 12px rgba(15,23,42,.08)
 }
-.gf-row strong{display:block;font-size:25px;margin-bottom:3px}
-.gf-row span{display:block;font-size:12px;font-weight:700}
-.gf-row small{display:block;font-size:10px;margin-top:4px;opacity:.9}
+.gf-row strong{display:block;font-size:27px;margin-bottom:1px}
+.gf-row span{display:block;font-size:12px;font-weight:800}
+.gf-row small{display:block;font-size:9px;margin-top:2px;opacity:.92}
 .gf-note{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
 @media(max-width:700px){
   .graphic-funnel{gap:5px}
-  .gf-row{min-height:58px;padding:7px 10px}
-  .gf-row strong{font-size:23px}
+  .gf-row{min-height:48px;padding:5px 9px}
+  .gf-row strong{font-size:24px}
   .gf-row span{font-size:11px}
+  .gf-row small{font-size:8px;margin-top:1px}
 }
 
 </style></head><body>
@@ -384,7 +385,14 @@ function renderGraphicFunnels(){
   {name:'Продажи',value:data.sales,conv:pct(data.talks,data.sales),width:40}
  ];
  const markup=steps.map((s,i)=>`
-   <div class="gf-row" style="width:${s.width}%">
+   <div class="gf-row" style="width:${s.width}%;background:${[
+'linear-gradient(135deg,#4338ca,#6366f1)',
+'linear-gradient(135deg,#5b21b6,#7c3aed)',
+'linear-gradient(135deg,#6d28d9,#9333ea)',
+'linear-gradient(135deg,#7e22ce,#a21caf)',
+'linear-gradient(135deg,#86198f,#c026d3)',
+'linear-gradient(135deg,#be185d,#f43f5e)'
+][i]}">
      <div>
        <strong>${Number(s.value).toLocaleString('ru-RU')}</strong>
        <span>${s.name}</span>
