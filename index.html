@@ -18,7 +18,95 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 .historybar{height:9px;background:#e2e8f0;border-radius:10px;overflow:hidden}.historybar span{height:100%;display:block;background:var(--blue)}
 @media(max-width:950px){.app{grid-template-columns:1fr}.kpis,.funnel,.two,.three,.form{grid-template-columns:1fr}.stage:not(:last-child):after{display:none}}
 .input-menu{display:block!important;font-weight:700!important;background:#2563eb!important;color:white!important;margin-bottom:8px!important}
-.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}.login-card{width:100%;max-width:430px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 10px 30px rgba(15,23,42,.08)}.login-card label{display:block;margin:12px 0 5px}.login-card .btn{width:100%;margin-top:16px}.login-error{display:none;margin-top:12px;padding:10px;border-radius:9px;background:#fef2f2;color:#991b1b;font-size:13px}.userbox{background:#1e3653;padding:11px;border-radius:12px;margin-bottom:12px;font-size:13px}.userbox b{display:block}.logout{width:100%;border:1px solid #47627f;background:transparent;color:#dbeafe;padding:9px;border-radius:9px;cursor:pointer;margin-bottom:14px}</style></head><body>
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}.login-card{width:100%;max-width:430px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 10px 30px rgba(15,23,42,.08)}.login-card label{display:block;margin:12px 0 5px}.login-card .btn{width:100%;margin-top:16px}.login-error{display:none;margin-top:12px;padding:10px;border-radius:9px;background:#fef2f2;color:#991b1b;font-size:13px}.userbox{background:#1e3653;padding:11px;border-radius:12px;margin-bottom:12px;font-size:13px}.userbox b{display:block}.logout{width:100%;border:1px solid #47627f;background:transparent;color:#dbeafe;padding:9px;border-radius:9px;cursor:pointer;margin-bottom:14px}
+/* ===== Mobile adaptation ===== */
+@media(max-width:700px){
+  body{font-size:14px;overflow-x:hidden}
+  .app{display:block;min-height:100vh}
+  aside{
+    position:relative;
+    width:100%;
+    padding:12px 12px 8px;
+    border-radius:0;
+  }
+  .brand{font-size:20px;line-height:1.1}
+  .sub{font-size:11px;margin:4px 0 10px}
+  .userbox{padding:8px 10px;margin-bottom:8px}
+  .logout{padding:8px;margin-bottom:8px}
+
+  nav{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:4px;
+    -webkit-overflow-scrolling:touch;
+  }
+  nav button{
+    flex:0 0 auto;
+    width:auto;
+    white-space:nowrap;
+    padding:9px 11px;
+    margin:0;
+    font-size:13px;
+  }
+
+  main{padding:12px}
+  .top{display:block;margin-bottom:10px}
+  h1{font-size:24px}
+  .top .pill{display:inline-block;margin-top:8px}
+
+  .grid,.kpis,.two,.three,.form{grid-template-columns:1fr!important}
+  .card{padding:12px;border-radius:12px}
+  .val{font-size:26px}
+
+  #funnelKpis{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px;
+  }
+  #funnelKpis .card:last-child{
+    grid-column:1 / -1;
+  }
+
+  .funnel{
+    display:flex!important;
+    overflow-x:auto;
+    gap:10px;
+    padding:4px 2px 8px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .funnel .stage{
+    min-width:118px;
+    flex:0 0 118px;
+    padding:8px 6px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+  }
+  .stage:not(:last-child):after{display:none!important}
+  .stage strong{font-size:24px}
+  .stage b{display:block;font-size:12px;margin-top:4px}
+  .stage span{font-size:11px}
+
+  table{min-width:620px;font-size:12px}
+  .card:has(table){overflow-x:auto}
+  th,td{padding:8px}
+
+  textarea{min-height:80px}
+  .btn{width:100%;padding:12px}
+
+  #diagnosis,.alert{font-size:13px}
+  #funnelLoss .alert{margin:7px 0}
+
+  /* Input forms: one field per row */
+  #input .form{display:block}
+  #input .form>div{margin-bottom:10px}
+
+  /* Login */
+  .login-screen{padding:14px}
+  .login-card{max-width:100%;padding:20px}
+}
+
+</style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
 <nav>
