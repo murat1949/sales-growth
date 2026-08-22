@@ -284,6 +284,26 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
  .team-row .team-state{grid-column:1/-1}
 }
 
+
+/* ===== History screen ===== */
+.history-chart{display:flex;align-items:flex-end;gap:9px;height:190px;padding:14px 4px 2px}
+.history-col{flex:1;min-width:0;text-align:center}
+.history-bar{
+ width:100%;min-height:8px;border-radius:8px 8px 3px 3px;
+ background:linear-gradient(180deg,#6366f1,#c026d3)
+}
+.history-col b{display:block;font-size:11px;margin-top:6px}
+.history-col small{display:block;font-size:10px;color:#64748b}
+.history-row{display:grid;grid-template-columns:1.2fr .7fr .7fr;gap:8px;padding:9px 0;border-bottom:1px solid #e5e7eb;font-size:12px}
+.history-row:last-child{border-bottom:0}
+.history-note{padding:12px;border-radius:9px;background:#f8fafc;font-size:13px}
+@media(max-width:700px){
+ #history .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .history-chart{height:165px;gap:5px}
+ .history-col b{font-size:9px}
+ .history-col small{font-size:9px}
+}
+
 </style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
@@ -397,7 +417,31 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 </div>
 </section>
 
-<section id="history" class="section"><div class="card"><h3>История обновлений</h3><table id="historyTable"></table></div></section>
+<section id="history" class="section">
+<div class="grid kpis" id="historyKpis"></div>
+
+<div class="card" style="margin-top:13px">
+  <h3>Динамика показателей</h3>
+  <div id="historyChart" class="history-chart"></div>
+  <div class="muted" style="margin-top:8px">Пока показан текущий срез. После накопления ежедневных записей здесь будет видна реальная динамика по датам.</div>
+</div>
+
+<div class="card" style="margin-top:13px">
+  <h3>Текущий срез</h3>
+  <div id="historyTable"></div>
+</div>
+
+<div class="grid two" style="margin-top:13px">
+  <div class="card">
+    <h3>Что изменилось</h3>
+    <div id="historyChange"></div>
+  </div>
+  <div class="card">
+    <h3>Управленческий вывод</h3>
+    <div id="historyConclusion"></div>
+  </div>
+</div>
+</section>
 <section id="alerts" class="section"><div class="card"><h3>Автоматические сигналы</h3><div id="alertsView"></div></div></section>
 
 <section id="input" class="section"><div class="card"><h3>Обновить показатели</h3><div id="inputHint" class="muted" style="margin-bottom:12px">После «Сохранить» данные записываются в Supabase и сразу обновляют панель.</div>
@@ -671,7 +715,53 @@ function renderTeam(){
    <b>Вопрос:</b> почему именно на этом участке теряется больше всего результата и что меняем сегодня?</div>`;
 }
 
+
+function renderHistory(){
+ const hk=document.getElementById('historyKpis');
+ if(!hk) return;
+
+ const cAll=+pct(data.leads,data.sales);
+ const values=[
+   ['Внимание',data.attention],
+   ['Интерес',data.interest],
+   ['Лиды',data.leads],
+   ['Передано',data.handoff],
+   ['Переговоры',data.talks],
+   ['Продажи',data.sales]
+ ];
+
+ hk.innerHTML=[
+   ['Лиды',data.leads],
+   ['Передано',data.handoff],
+   ['Переговоры',data.talks],
+   ['Продажи',data.sales],
+   ['Лид → Продажа',cAll.toFixed(1)+'%']
+ ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="val">${typeof x[1]==='number'?x[1].toLocaleString('ru-RU'):x[1]}</div></div>`).join('');
+
+ /* Logarithmic visual scale so all funnel stages remain visible */
+ const logs=values.map(x=>Math.log10(Math.max(1,x[1])+1));
+ const maxLog=Math.max(...logs);
+ document.getElementById('historyChart').innerHTML=values.map((x,i)=>{
+   const h=Math.max(8,Math.round((logs[i]/maxLog)*145));
+   return `<div class="history-col"><div class="history-bar" style="height:${h}px"></div><b>${x[0]}</b><small>${Number(x[1]).toLocaleString('ru-RU')}</small></div>`;
+ }).join('');
+
+ document.getElementById('historyTable').innerHTML=
+   `<div class="history-row"><b>Показатель</b><b>Сейчас</b><b>Статус</b></div>`+
+   values.map(x=>`<div class="history-row"><span>${x[0]}</span><b>${Number(x[1]).toLocaleString('ru-RU')}</b><span>текущий</span></div>`).join('');
+
+ document.getElementById('historyChange').innerHTML=
+   `<div class="history-note"><b>История начинает накапливаться.</b><br><br>
+   Сейчас у нас есть рабочий текущий срез. Для честного сравнения «было → стало» нужны записи минимум за два периода.</div>`;
+
+ document.getElementById('historyConclusion').innerHTML=
+   `<div class="history-note"><b>Контрольная точка:</b><br>
+   ${data.leads} лидов → ${data.sales} продаж. Итоговая конверсия ${cAll.toFixed(1)}%.<br><br>
+   Следующая задача — сохранять такие срезы по датам и показывать рост или падение автоматически.</div>`;
+}
+
 function render(){
+ renderHistory();
  renderTeam();
  renderSales();
  renderMarketing();
