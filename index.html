@@ -1,0 +1,116 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Панель роста продаж v2</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--text:#1e293b;--muted:#64748b;--line:#e2e8f0;--blue:#2563eb;--green:#16a34a;--orange:#ea580c;--red:#dc2626;--navy:#142337}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+.app{display:grid;grid-template-columns:245px 1fr;min-height:100vh}aside{background:var(--navy);color:white;padding:20px 15px}
+.brand{font-size:21px;font-weight:800}.sub{font-size:12px;color:#cbd5e1;margin:5px 0 22px}.role{background:#1e3653;padding:11px;border-radius:12px;margin-bottom:18px}
+select,input,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:white}label{font-size:12px;color:var(--muted)}
+.role label{color:#cbd5e1;display:block;margin-bottom:5px}nav button{width:100%;border:0;background:transparent;color:#dbeafe;text-align:left;padding:11px;border-radius:9px;margin:3px 0;cursor:pointer}
+nav button.active,nav button:hover{background:#234668}.hidden{display:none!important}main{padding:23px}.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{background:#dcfce7;color:#166534;border-radius:99px;padding:7px 11px;font-size:12px;font-weight:700}
+.section{display:none}.section.active{display:block}.grid{display:grid;gap:13px}.kpis{grid-template-columns:repeat(5,1fr)}.two{grid-template-columns:1.2fr .8fr}.three{grid-template-columns:repeat(3,1fr)}
+.card{background:white;border:1px solid var(--line);border-radius:15px;padding:15px;box-shadow:0 2px 8px rgba(15,23,42,.04)}.val{font-size:29px;font-weight:800;margin-top:6px}
+.good{color:var(--green)}.warn{color:var(--orange)}.bad{color:var(--red)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted)}
+.funnel{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.stage{text-align:center;position:relative}.stage:not(:last-child):after{content:"→";position:absolute;right:-14px;top:28px;color:var(--blue);font-size:25px}
+.stage strong{font-size:28px}.stage span{display:block;font-size:12px;color:var(--muted);margin-top:5px}.alert{border-left:4px solid var(--orange);background:#fff7ed;padding:11px;border-radius:9px;margin:8px 0}.alert.red{border-color:var(--red);background:#fef2f2}.alert.green{border-color:var(--green);background:#f0fdf4}
+.form{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.btn{border:0;background:var(--blue);color:white;padding:10px 14px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#475569}
+.historybar{height:9px;background:#e2e8f0;border-radius:10px;overflow:hidden}.historybar span{height:100%;display:block;background:var(--blue)}
+@media(max-width:950px){.app{grid-template-columns:1fr}.kpis,.funnel,.two,.three,.form{grid-template-columns:1fr}.stage:not(:last-child):after{display:none}}
+</style></head><body>
+<div class="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
+<div class="role"><label>Роль</label><select id="role"><option value="owner">Руководитель</option><option value="marketing">Маркетинг</option><option value="sales">Продажи</option></select></div>
+<nav>
+<button class="active" data-page="dash">Главная</button><button data-page="funnel">Воронка</button>
+<button data-page="marketing" data-roles="owner marketing">Маркетинг</button><button data-page="sales" data-roles="owner sales">Продажи</button><button data-page="team" data-roles="owner">Команда</button>
+<button data-page="history">История</button><button data-page="alerts" data-roles="owner">Алерты</button><button data-page="input">Ввод данных</button>
+</nav></aside><main>
+<div class="top"><div><h1 id="ttl">Главная</h1><div class="muted">Демонстрационный рабочий прототип · данные сохраняются в браузере</div></div><div class="pill">● система активна</div></div>
+
+<section id="dash" class="section active">
+<div class="grid kpis" id="kpis"></div>
+<div class="card" style="margin-top:13px"><h3>Воронка сегодня</h3><div class="funnel" id="funnelView"></div></div>
+<div class="grid two" style="margin-top:13px"><div class="card"><h3>Конверсии</h3><table id="convTable"></table></div>
+<div class="card"><h3>Диагностика</h3><div id="diagnosis"></div></div></div>
+</section>
+
+<section id="funnel" class="section"><div class="card"><h3>Контроль всей цепочки</h3><table id="fullTable"></table></div></section>
+
+<section id="marketing" class="section"><div class="grid three">
+<div class="card"><div class="muted">Внимание</div><div class="val" id="mAtt"></div></div>
+<div class="card"><div class="muted">Интерес</div><div class="val" id="mInt"></div></div>
+<div class="card"><div class="muted">Лиды</div><div class="val" id="mLeads"></div></div></div>
+<div class="card" style="margin-top:13px"><h3>Задача маркетинга</h3><p>Создать достаточный поток внимания, превратить его в интерес и передать в продажи качественные лиды. Панель показывает не перечень выполненных работ, а результат в цифрах.</p></div></section>
+
+<section id="sales" class="section"><div class="grid three">
+<div class="card"><div class="muted">Получено</div><div class="val" id="sHand"></div></div>
+<div class="card"><div class="muted">Переговоры</div><div class="val" id="sTalk"></div></div>
+<div class="card"><div class="muted">Продажи</div><div class="val" id="sSales"></div></div></div>
+<div class="card" style="margin-top:13px"><h3>Задача продаж</h3><p>Не потерять переданные лиды, быстро обработать, довести до переговоров и сделки. Руководитель видит фактическую конверсию отдела.</p></div></section>
+
+
+<section id="team" class="section">
+<div class="card"><h3>Команда и ответственность по воронке</h3>
+<table>
+<tr><th>Участник</th><th>Участок воронки</th><th>Что отвечает</th><th>Ключевые цифры</th></tr>
+<tr><td><b>Таргетолог / SMM</b></td><td>Внимание</td><td>Привести целевую аудиторию</td><td>Охват, показы, клики, обращения</td></tr>
+<tr><td><b>Маркетолог</b></td><td>Интерес → Лид</td><td>Превратить внимание в качественный интерес</td><td>Интерес, лиды, качество лидов, передано</td></tr>
+<tr><td><b>Продажник / РОП</b></td><td>Лид → Продажа</td><td>Обработать и довести до сделки</td><td>Контакты, переговоры, сделки, конверсия</td></tr>
+<tr><td><b>Руководитель</b></td><td>Вся воронка</td><td>Видеть узкие места и управлять результатом</td><td>План/факт, конверсии, отклонения, продажи</td></tr>
+</table></div>
+<div class="grid three" style="margin-top:13px">
+<div class="card"><div class="muted">Маркетинг передал</div><div class="val">18</div><div class="warn">из 48 лидов</div></div>
+<div class="card"><div class="muted">Продажи обработали</div><div class="val">14</div><div class="good">из 18 переданных</div></div>
+<div class="card"><div class="muted">Закрыто в продажу</div><div class="val">10</div><div class="good">55,6% от переданных</div></div>
+</div>
+<div class="card" style="margin-top:13px"><h3>Принцип ответственности</h3>
+<p><b>У каждого участника — свой участок, свои цифры и свой результат.</b> Руководителю не нужен длинный отчёт о проделанной работе: он видит, кто получил поток, сколько передал дальше и где возникла потеря.</p></div>
+</section>
+
+<section id="history" class="section"><div class="card"><h3>История обновлений</h3><table id="historyTable"></table></div></section>
+<section id="alerts" class="section"><div class="card"><h3>Автоматические сигналы</h3><div id="alertsView"></div></div></section>
+
+<section id="input" class="section"><div class="card"><h3>Обновить показатели</h3>
+<div class="form">
+<div><label>Внимание / охват</label><input id="attention" type="number"></div>
+<div><label>Интерес</label><input id="interest" type="number"></div>
+<div><label>Лиды</label><input id="leads" type="number"></div>
+<div><label>Передано в продажи</label><input id="handoff" type="number"></div>
+<div><label>Переговоры</label><input id="talks" type="number"></div>
+<div><label>Продажи</label><input id="salesCount" type="number"></div>
+</div><div style="margin-top:10px"><label>Комментарий</label><textarea id="comment" rows="2" placeholder="Что изменилось / причина отклонения"></textarea></div>
+<button class="btn" style="margin-top:10px" id="save">Сохранить</button> <button class="btn secondary" id="reset">Вернуть демо</button>
+</div></section>
+</main></div>
+<script>
+const demo={attention:12400,interest:310,leads:48,handoff:18,talks:14,sales:10};
+let data=JSON.parse(localStorage.getItem('growthData')||'null')||demo;
+let history=JSON.parse(localStorage.getItem('growthHistory')||'[]');
+const names=[['attention','Внимание'],['interest','Интерес'],['leads','Лиды'],['handoff','Передано'],['sales','Продажи']];
+const pct=(a,b)=>a?((b/a)*100).toFixed(1):'0.0';
+function render(){
+ document.getElementById('kpis').innerHTML=names.map(([k,n])=>`<div class="card"><div class="muted">${n}</div><div class="val">${data[k].toLocaleString('ru-RU')}</div></div>`).join('');
+ document.getElementById('funnelView').innerHTML=names.map(([k,n])=>`<div class="stage"><strong>${data[k].toLocaleString('ru-RU')}</strong><b>${n}</b><span>${k==='attention'?'старт': ''}</span></div>`).join('');
+ let rows=[['Внимание → Интерес',pct(data.attention,data.interest)],['Интерес → Лид',pct(data.interest,data.leads)],['Лид → Передано',pct(data.leads,data.handoff)],['Передано → Продажа',pct(data.handoff,data.sales)]];
+ document.getElementById('convTable').innerHTML='<tr><th>Переход</th><th>Конверсия</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}%</td></tr>`).join('');
+ let c1=+pct(data.attention,data.interest),c2=+pct(data.interest,data.leads),c3=+pct(data.leads,data.handoff),c4=+pct(data.handoff,data.sales);
+ let arr=[['Внимание → Интерес',c1],['Интерес → Лид',c2],['Лид → Передано',c3],['Передано → Продажа',c4]];
+ let min=arr.reduce((a,b)=>a[1]<b[1]?a:b);
+ document.getElementById('diagnosis').innerHTML=`<div class="alert red"><b>Кандидат на узкое место:</b><br>${min[0]} — ${min[1]}%</div><div class="alert green"><b>Принцип:</b><br>Не гадать, а задавать вопрос «почему?» именно там, где цифры проседают.</div>`;
+ document.getElementById('fullTable').innerHTML='<tr><th>Этап</th><th>Количество</th><th>Ответственный</th></tr>'+
+ [['Внимание',data.attention,'Таргетолог / SMM'],['Интерес',data.interest,'Маркетинг'],['Лиды',data.leads,'Маркетинг'],['Передано',data.handoff,'Маркетинг / РОП'],['Переговоры',data.talks,'Продажи'],['Продажи',data.sales,'Продажи']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+ mAtt.textContent=data.attention;mInt.textContent=data.interest;mLeads.textContent=data.leads;sHand.textContent=data.handoff;sTalk.textContent=data.talks;sSales.textContent=data.sales;
+ alertsView.innerHTML=(c3<40?'<div class="alert red"><b>Красный:</b> в продажи передано менее 40% лидов.</div>':'<div class="alert green">Передача лидов в продажи в норме.</div>')+(c4<40?'<div class="alert">Конверсия отдела продаж ниже 40%.</div>':'<div class="alert green">Конверсия отдела продаж выше контрольного уровня.</div>');
+ historyTable.innerHTML='<tr><th>Время</th><th>Роль</th><th>Лиды</th><th>Передано</th><th>Продажи</th><th>Комментарий</th></tr>'+history.slice().reverse().map(h=>`<tr><td>${h.time}</td><td>${h.role}</td><td>${h.leads}</td><td>${h.handoff}</td><td>${h.sales}</td><td>${h.comment||''}</td></tr>`).join('');
+ ['attention','interest','leads','handoff','talks'].forEach(k=>document.getElementById(k).value=data[k]); salesCount.value=data.sales;
+}
+save.onclick=()=>{data={attention:+attention.value,interest:+interest.value,leads:+leads.value,handoff:+handoff.value,talks:+talks.value,sales:+salesCount.value};
+ let roleName={owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[role.value];
+ history.push({time:new Date().toLocaleString('ru-RU'),role:roleName,leads:data.leads,handoff:data.handoff,sales:data.sales,comment:comment.value});
+ localStorage.setItem('growthData',JSON.stringify(data));localStorage.setItem('growthHistory',JSON.stringify(history));comment.value='';render();alert('Показатели сохранены');};
+reset.onclick=()=>{data={...demo};history=[];localStorage.removeItem('growthData');localStorage.removeItem('growthHistory');render();};
+const btns=[...document.querySelectorAll('nav button')],secs=[...document.querySelectorAll('.section')];
+btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('active'));b.classList.add('active');secs.forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');ttl.textContent=b.textContent});
+function roleApply(){let r=role.value;btns.forEach(b=>{let a=b.dataset.roles;b.classList.toggle('hidden',a&&!a.split(' ').includes(r))});let act=document.querySelector('nav button.active');if(act.classList.contains('hidden'))btns[0].click()}
+role.onchange=roleApply;roleApply();render();
+</script></body></html>
