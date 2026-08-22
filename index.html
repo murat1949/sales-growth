@@ -264,6 +264,26 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   .sales-stage b{font-size:11px}
 }
 
+
+/* ===== Team management screen ===== */
+.team-row{
+ display:grid;grid-template-columns:1.15fr .8fr .7fr;gap:8px;align-items:center;
+ padding:11px 0;border-bottom:1px solid #e5e7eb;font-size:13px
+}
+.team-row:last-child{border-bottom:0}
+.team-owner{font-weight:700}
+.team-badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.team-ok{background:#dcfce7;color:#166534}
+.team-warn{background:#fef3c7;color:#92400e}
+.team-bad{background:#fee2e2;color:#991b1b}
+.team-card{padding:11px 12px;border-radius:10px;margin:8px 0;background:#f8fafc}
+.team-question{padding:13px;border-left:4px solid #ef4444;background:#fff1f2;border-radius:9px;font-size:13px}
+@media(max-width:700px){
+ #team .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .team-row{grid-template-columns:1fr .8fr;gap:5px}
+ .team-row .team-state{grid-column:1/-1}
+}
+
 </style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
@@ -358,21 +378,23 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 
 
 <section id="team" class="section">
-<div class="card"><h3>Команда и ответственность по воронке</h3>
-<table>
-<tr><th>Участник</th><th>Участок воронки</th><th>Что отвечает</th><th>Ключевые цифры</th></tr>
-<tr><td><b>Таргетолог / SMM</b></td><td>Внимание</td><td>Привести целевую аудиторию</td><td>Охват, показы, клики, обращения</td></tr>
-<tr><td><b>Маркетолог</b></td><td>Интерес → Лид</td><td>Превратить внимание в качественный интерес</td><td>Интерес, лиды, качество лидов, передано</td></tr>
-<tr><td><b>Продажник / РОП</b></td><td>Лид → Продажа</td><td>Обработать и довести до сделки</td><td>Контакты, переговоры, сделки, конверсия</td></tr>
-<tr><td><b>Руководитель</b></td><td>Вся воронка</td><td>Видеть узкие места и управлять результатом</td><td>План/факт, конверсии, отклонения, продажи</td></tr>
-</table></div>
-<div class="grid three" style="margin-top:13px">
-<div class="card"><div class="muted">Маркетинг передал</div><div class="val">18</div><div class="warn">из 48 лидов</div></div>
-<div class="card"><div class="muted">Продажи обработали</div><div class="val">14</div><div class="good">из 18 переданных</div></div>
-<div class="card"><div class="muted">Закрыто в продажу</div><div class="val">10</div><div class="good">55,6% от переданных</div></div>
+<div class="grid kpis" id="teamKpis"></div>
+
+<div class="card" style="margin-top:13px">
+  <h3>Ответственность по воронке</h3>
+  <div id="teamResponsibility"></div>
 </div>
-<div class="card" style="margin-top:13px"><h3>Принцип ответственности</h3>
-<p><b>У каждого участника — свой участок, свои цифры и свой результат.</b> Руководителю не нужен длинный отчёт о проделанной работе: он видит, кто получил поток, сколько передал дальше и где возникла потеря.</p></div>
+
+<div class="grid two" style="margin-top:13px">
+  <div class="card">
+    <h3>Состояние участков</h3>
+    <div id="teamStatus"></div>
+  </div>
+  <div class="card">
+    <h3>Кому задать вопрос сегодня</h3>
+    <div id="teamQuestion"></div>
+  </div>
+</div>
 </section>
 
 <section id="history" class="section"><div class="card"><h3>История обновлений</h3><table id="historyTable"></table></div></section>
@@ -598,7 +620,59 @@ function renderSales(){
  document.getElementById('salesActions').innerHTML=actions.map((x,i)=>`<div class="sales-action"><b>${i+1}.</b> ${x}</div>`).join('');
 }
 
+
+function renderTeam(){
+ const tk=document.getElementById('teamKpis');
+ if(!tk) return;
+
+ const cAI=+pct(data.attention,data.interest);
+ const cIL=+pct(data.interest,data.leads);
+ const cLH=+pct(data.leads,data.handoff);
+ const cHT=+pct(data.handoff,data.talks);
+ const cTS=+pct(data.talks,data.sales);
+
+ const zones=[
+   {stage:'Внимание → Интерес',owner:'Маркетинг',value:cAI,limit:5},
+   {stage:'Интерес → Лид',owner:'Маркетинг',value:cIL,limit:20},
+   {stage:'Лид → Передано',owner:'Маркетинг / РОП',value:cLH,limit:50},
+   {stage:'Передано → Переговоры',owner:'Продажи',value:cHT,limit:70},
+   {stage:'Переговоры → Продажа',owner:'Продажи',value:cTS,limit:50}
+ ];
+
+ const bad=zones.filter(z=>z.value<z.limit).length;
+ tk.innerHTML=[
+   ['Участков контроля',zones.length],
+   ['В норме',zones.length-bad],
+   ['Требуют внимания',bad],
+   ['Продаж',data.sales]
+ ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="val">${x[1]}</div></div>`).join('');
+
+ document.getElementById('teamResponsibility').innerHTML=zones.map(z=>{
+   const ratio=z.value/z.limit;
+   const cls=ratio>=1?'team-ok':ratio>=.75?'team-warn':'team-bad';
+   const txt=ratio>=1?'Норма':ratio>=.75?'Внимание':'Проблема';
+   return `<div class="team-row">
+     <div><b>${z.stage}</b><div class="muted">${z.value.toFixed(1)}%</div></div>
+     <div class="team-owner">${z.owner}</div>
+     <div class="team-state"><span class="team-badge ${cls}">${txt}</span></div>
+   </div>`;
+ }).join('');
+
+ const marketingBad=zones.filter(z=>z.owner.includes('Маркетинг') && z.value<z.limit).length;
+ const salesBad=zones.filter(z=>z.owner==='Продажи' && z.value<z.limit).length;
+ document.getElementById('teamStatus').innerHTML=
+   `<div class="team-card"><b>Маркетинг</b><br><span class="muted">${marketingBad?marketingBad+' проблемных участка':'Критических отклонений нет'}</span></div>`+
+   `<div class="team-card"><b>Продажи</b><br><span class="muted">${salesBad?salesBad+' проблемных участка':'Критических отклонений нет'}</span></div>`;
+
+ const worst=zones.reduce((a,b)=>(a.value/a.limit)<(b.value/b.limit)?a:b);
+ document.getElementById('teamQuestion').innerHTML=
+   `<div class="team-question"><b>${worst.owner}</b><br>
+   ${worst.stage}: ${worst.value.toFixed(1)}%.<br><br>
+   <b>Вопрос:</b> почему именно на этом участке теряется больше всего результата и что меняем сегодня?</div>`;
+}
+
 function render(){
+ renderTeam();
  renderSales();
  renderMarketing();
  renderGraphicFunnels();
