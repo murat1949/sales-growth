@@ -203,6 +203,19 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   .gf-row small{font-size:8px;margin-top:1px}
 }
 
+
+/* Final mobile cockpit cleanup */
+@media(max-width:700px){
+  #sec-main .main-old-funnel{display:none!important}
+  #sec-main .main-conversions{display:none!important}
+  #sec-main .main-analysis{display:block!important}
+  #sec-main .main-analysis>.card:not(.main-conversions){margin-top:0}
+  #sec-main .graphic-funnel-card{margin-top:10px!important}
+  #sec-main .graphic-funnel-card h3{margin-bottom:7px}
+  #sec-main .graphic-funnel{padding-top:2px}
+  #sec-main .gf-note{font-size:9px;line-height:1.25;margin-top:5px}
+}
+
 </style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
@@ -221,7 +234,7 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <div id="graphicFunnelMain" class="graphic-funnel"></div>
 <div class="gf-note">Ширина уровней — визуальная. Цифры и конверсии — реальные данные из Supabase.</div>
 </div>
-<div class="grid two" style="margin-top:13px"><div class="card"><h3>Конверсии</h3><table id="convTable"></table></div>
+<div class="grid two main-analysis" style="margin-top:13px"><div class="card main-conversions"><h3>Конверсии</h3><table id="convTable"></table></div>
 <div class="card"><h3>Диагностика</h3><div id="diagnosis"></div></div></div>
 </section>
 
