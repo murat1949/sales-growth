@@ -83,42 +83,61 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 </div></section>
 </main></div>
 
+
 <script>
 const SUPABASE_URL='https://swpnpxhoaxcnllieejsn.supabase.co';
 const SUPABASE_KEY='sb_publishable_IDfG17rqCnpT7CeZairyyg_Sx7agWuu';
+const COMPANY_NAME='Компания — демонстрация';
 
-const demo={attention:12400,interest:310,leads:48,handoff:18,talks:14,sales:10};
+let companyId=null;
+const demo={attention:12400,interest:310,leads:55,handoff:18,talks:14,sales:10};
 let data={...demo};
 let history=[];
 
 const names=[['attention','Внимание'],['interest','Интерес'],['leads','Лиды'],['handoff','Передано'],['sales','Продажи']];
 const pct=(a,b)=>a?((b/a)*100).toFixed(1):'0.0';
 
+function apiHeaders(prefer){
+  const h={
+    'apikey':SUPABASE_KEY,
+    'Authorization':'Bearer '+SUPABASE_KEY,
+    'Content-Type':'application/json'
+  };
+  if(prefer) h['Prefer']=prefer;
+  return h;
+}
+
+async function api(url, options={}){
+  const r=await fetch(url, options);
+  const text=await r.text();
+  if(!r.ok) throw new Error(r.status+' '+text);
+  return text ? JSON.parse(text) : null;
+}
+
 function setStatus(text, ok=true){
   const p=document.querySelector('.pill');
   p.textContent=text;
-  if(ok){
-    p.style.background='#dcfce7'; p.style.color='#166534';
-  }else{
-    p.style.background='#fee2e2'; p.style.color='#991b1b';
-  }
+  p.style.background=ok?'#dcfce7':'#fee2e2';
+  p.style.color=ok?'#166534':'#991b1b';
+}
+
+async function ensureCompany(){
+  if(companyId) return companyId;
+  const url=SUPABASE_URL+'/rest/v1/growth_companies?select=id&name=eq.'+encodeURIComponent(COMPANY_NAME)+'&limit=1';
+  const rows=await api(url,{headers:apiHeaders(),cache:'no-store'});
+  if(!rows?.length) throw new Error('Компания не найдена');
+  companyId=rows[0].id;
+  return companyId;
 }
 
 async function loadFromSupabase(){
   try{
-    const url = SUPABASE_URL + '/rest/v1/growth_funnel_today?select=*&limit=1';
-    const r = await fetch(url,{
-      headers:{
-        'apikey': SUPABASE_KEY,
-        'Authorization':'Bearer '+SUPABASE_KEY
-      },
-      cache:'no-store'
-    });
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const rows = await r.json();
-    if(!rows || !rows.length) throw new Error('Нет данных');
-    const x = rows[0];
-    data = {
+    await ensureCompany();
+    const url=SUPABASE_URL+'/rest/v1/growth_funnel_today?select=*&company_name=eq.'+encodeURIComponent(COMPANY_NAME)+'&limit=1';
+    const rows=await api(url,{headers:apiHeaders(),cache:'no-store'});
+    if(!rows?.length) throw new Error('Нет данных');
+    const x=rows[0];
+    data={
       attention:Number(x.attention||0),
       interest:Number(x.interest||0),
       leads:Number(x.leads||0),
@@ -126,44 +145,95 @@ async function loadFromSupabase(){
       talks:Number(x.talks||0),
       sales:Number(x.sales||0)
     };
-    setStatus('● Supabase подключен', true);
+    setStatus('● Supabase подключен',true);
     render();
   }catch(e){
     console.error(e);
-    setStatus('● ошибка Supabase', false);
+    setStatus('● ошибка Supabase',false);
     render();
   }
 }
 
-function render(){
- document.getElementById('kpis').innerHTML=names.map(([k,n])=>`<div class="card"><div class="muted">${n}</div><div class="val">${data[k].toLocaleString('ru-RU')}</div></div>`).join('');
- document.getElementById('funnelView').innerHTML=names.map(([k,n])=>`<div class="stage"><strong>${data[k].toLocaleString('ru-RU')}</strong><b>${n}</b><span>${k==='attention'?'старт': ''}</span></div>`).join('');
- let rows=[['Внимание → Интерес',pct(data.attention,data.interest)],['Интерес → Лид',pct(data.interest,data.leads)],['Лид → Передано',pct(data.leads,data.handoff)],['Передано → Продажа',pct(data.handoff,data.sales)]];
- document.getElementById('convTable').innerHTML='<tr><th>Переход</th><th>Конверсия</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}%</td></tr>`).join('');
- let c1=+pct(data.attention,data.interest),c2=+pct(data.interest,data.leads),c3=+pct(data.leads,data.handoff),c4=+pct(data.handoff,data.sales);
- let arr=[['Внимание → Интерес',c1],['Интерес → Лид',c2],['Лид → Передано',c3],['Передано → Продажа',c4]];
- let min=arr.reduce((a,b)=>a[1]<b[1]?a:b);
- document.getElementById('diagnosis').innerHTML=`<div class="alert red"><b>Кандидат на узкое место:</b><br>${min[0]} — ${min[1]}%</div><div class="alert green"><b>Принцип:</b><br>Не гадать, а задавать вопрос «почему?» именно там, где цифры проседают.</div>`;
- document.getElementById('fullTable').innerHTML='<tr><th>Этап</th><th>Количество</th><th>Ответственный</th></tr>'+
- [['Внимание',data.attention,'Таргетолог / SMM'],['Интерес',data.interest,'Маркетинг'],['Лиды',data.leads,'Маркетинг'],['Передано',data.handoff,'Маркетинг / РОП'],['Переговоры',data.talks,'Продажи'],['Продажи',data.sales,'Продажи']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
- mAtt.textContent=data.attention;mInt.textContent=data.interest;mLeads.textContent=data.leads;sHand.textContent=data.handoff;sTalk.textContent=data.talks;sSales.textContent=data.sales;
+async function saveToSupabase(){
+  try{
+    await ensureCompany();
+    const metricDate=new Date().toISOString().slice(0,10);
+    const note=comment.value||'Ввод из панели';
+    const payload=[
+      ['attention',+attention.value],
+      ['interest',+interest.value],
+      ['leads',+leads.value],
+      ['handoff',+handoff.value],
+      ['talks',+talks.value],
+      ['sales',+salesCount.value]
+    ].map(([metric_code,value])=>({
+      company_id:companyId,
+      metric_code,
+      metric_date:metricDate,
+      value,
+      comment:note,
+      updated_at:new Date().toISOString()
+    }));
 
- const tvals=document.querySelectorAll('#team .grid.three .val');
- if(tvals.length===3){ tvals[0].textContent=data.handoff; tvals[1].textContent=data.talks; tvals[2].textContent=data.sales; }
- const tnotes=document.querySelectorAll('#team .grid.three .warn, #team .grid.three .good');
- if(tnotes.length>=3){
-   tnotes[0].textContent=`из ${data.leads} лидов`;
-   tnotes[1].textContent=`из ${data.handoff} переданных`;
-   tnotes[2].textContent=`${pct(data.handoff,data.sales)}% от переданных`;
- }
+    const url=SUPABASE_URL+'/rest/v1/growth_metric_values?on_conflict=company_id,metric_code,metric_date';
+    await api(url,{
+      method:'POST',
+      headers:apiHeaders('resolution=merge-duplicates,return=representation'),
+      body:JSON.stringify(payload)
+    });
 
- alertsView.innerHTML=(c3<40?'<div class="alert red"><b>Красный:</b> в продажи передано менее 40% лидов.</div>':'<div class="alert green">Передача лидов в продажи в норме.</div>')+(c4<40?'<div class="alert">Конверсия отдела продаж ниже 40%.</div>':'<div class="alert green">Конверсия отдела продаж выше контрольного уровня.</div>');
- historyTable.innerHTML='<tr><th>Время</th><th>Роль</th><th>Лиды</th><th>Передано</th><th>Продажи</th><th>Комментарий</th></tr>';
- ['attention','interest','leads','handoff','talks'].forEach(k=>document.getElementById(k).value=data[k]); salesCount.value=data.sales;
+    const roleName={owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[role.value];
+    history.push({
+      time:new Date().toLocaleString('ru-RU'),
+      role:roleName,
+      leads:+leads.value,
+      handoff:+handoff.value,
+      sales:+salesCount.value,
+      comment:note
+    });
+
+    comment.value='';
+    setStatus('● данные сохранены',true);
+    await loadFromSupabase();
+    alert('Показатели сохранены в Supabase');
+  }catch(e){
+    console.error(e);
+    setStatus('● ошибка записи',false);
+    alert('Не удалось сохранить в Supabase: '+e.message);
+  }
 }
 
-save.onclick=()=>alert('На этом шаге панель читает живые данные из Supabase. Запись из панели подключим следующим шагом.');
-reset.onclick=()=>{};
+function render(){
+  document.getElementById('kpis').innerHTML=names.map(([k,n])=>`<div class="card"><div class="muted">${n}</div><div class="val">${data[k].toLocaleString('ru-RU')}</div></div>`).join('');
+  document.getElementById('funnelView').innerHTML=names.map(([k,n])=>`<div class="stage"><strong>${data[k].toLocaleString('ru-RU')}</strong><b>${n}</b><span>${k==='attention'?'старт':''}</span></div>`).join('');
+  let rows=[['Внимание → Интерес',pct(data.attention,data.interest)],['Интерес → Лид',pct(data.interest,data.leads)],['Лид → Передано',pct(data.leads,data.handoff)],['Передано → Продажа',pct(data.handoff,data.sales)]];
+  document.getElementById('convTable').innerHTML='<tr><th>Переход</th><th>Конверсия</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}%</td></tr>`).join('');
+  let c1=+pct(data.attention,data.interest),c2=+pct(data.interest,data.leads),c3=+pct(data.leads,data.handoff),c4=+pct(data.handoff,data.sales);
+  let arr=[['Внимание → Интерес',c1],['Интерес → Лид',c2],['Лид → Передано',c3],['Передано → Продажа',c4]];
+  let min=arr.reduce((a,b)=>a[1]<b[1]?a:b);
+  document.getElementById('diagnosis').innerHTML=`<div class="alert red"><b>Кандидат на узкое место:</b><br>${min[0]} — ${min[1]}%</div><div class="alert green"><b>Принцип:</b><br>Не гадать, а задавать вопрос «почему?» именно там, где цифры проседают.</div>`;
+  document.getElementById('fullTable').innerHTML='<tr><th>Этап</th><th>Количество</th><th>Ответственный</th></tr>'+
+    [['Внимание',data.attention,'Таргетолог / SMM'],['Интерес',data.interest,'Маркетинг'],['Лиды',data.leads,'Маркетинг'],['Передано',data.handoff,'Маркетинг / РОП'],['Переговоры',data.talks,'Продажи'],['Продажи',data.sales,'Продажи']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+  mAtt.textContent=data.attention; mInt.textContent=data.interest; mLeads.textContent=data.leads;
+  sHand.textContent=data.handoff; sTalk.textContent=data.talks; sSales.textContent=data.sales;
+
+  const tvals=document.querySelectorAll('#team .grid.three .val');
+  if(tvals.length===3){tvals[0].textContent=data.handoff;tvals[1].textContent=data.talks;tvals[2].textContent=data.sales;}
+  const tnotes=document.querySelectorAll('#team .grid.three .warn, #team .grid.three .good');
+  if(tnotes.length>=3){tnotes[0].textContent=`из ${data.leads} лидов`;tnotes[1].textContent=`из ${data.handoff} переданных`;tnotes[2].textContent=`${pct(data.handoff,data.sales)}% от переданных`;}
+
+  alertsView.innerHTML=(c3<40?'<div class="alert red"><b>Красный:</b> в продажи передано менее 40% лидов.</div>':'<div class="alert green">Передача лидов в продажи в норме.</div>')
+    +(c4<40?'<div class="alert">Конверсия отдела продаж ниже 40%.</div>':'<div class="alert green">Конверсия отдела продаж выше контрольного уровня.</div>');
+
+  historyTable.innerHTML='<tr><th>Время</th><th>Роль</th><th>Лиды</th><th>Передано</th><th>Продажи</th><th>Комментарий</th></tr>'
+    +history.slice().reverse().map(h=>`<tr><td>${h.time}</td><td>${h.role}</td><td>${h.leads}</td><td>${h.handoff}</td><td>${h.sales}</td><td>${h.comment||''}</td></tr>`).join('');
+
+  ['attention','interest','leads','handoff','talks'].forEach(k=>document.getElementById(k).value=data[k]);
+  salesCount.value=data.sales;
+}
+
+save.onclick=saveToSupabase;
+reset.onclick=()=>{attention.value=demo.attention;interest.value=demo.interest;leads.value=demo.leads;handoff.value=demo.handoff;talks.value=demo.talks;salesCount.value=demo.sales;};
 
 const btns=[...document.querySelectorAll('nav button')],secs=[...document.querySelectorAll('.section')];
 btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('active'));b.classList.add('active');secs.forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');ttl.textContent=b.textContent});
@@ -173,4 +243,5 @@ roleApply();
 render();
 loadFromSupabase();
 </script>
+
 </body></html>
