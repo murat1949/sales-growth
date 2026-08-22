@@ -71,7 +71,7 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <section id="history" class="section"><div class="card"><h3>История обновлений</h3><table id="historyTable"></table></div></section>
 <section id="alerts" class="section"><div class="card"><h3>Автоматические сигналы</h3><div id="alertsView"></div></div></section>
 
-<section id="input" class="section"><div class="card"><h3>Обновить показатели</h3><div class="muted" style="margin-bottom:12px">После «Сохранить» данные записываются в Supabase и сразу обновляют панель.</div>
+<section id="input" class="section"><div class="card"><h3>Обновить показатели</h3><div id="inputHint" class="muted" style="margin-bottom:12px">После «Сохранить» данные записываются в Supabase и сразу обновляют панель.</div>
 <div class="form">
 <div><label>Внимание / охват</label><input id="attention" type="number"></div>
 <div><label>Интерес</label><input id="interest" type="number"></div>
@@ -90,10 +90,36 @@ const SUPABASE_KEY='sb_publishable_IDfG17rqCnpT7CeZairyyg_Sx7agWuu';
 let accessToken='',currentUser=null,currentRole='';
 async function authFetch(path,options={}){const h=Object.assign({'apikey':SUPABASE_KEY},options.headers||{});h.Authorization='Bearer '+(accessToken||SUPABASE_KEY);return fetch(SUPABASE_URL+path,Object.assign({},options,{headers:h}))}
 async function login(){loginError.style.display='none';try{const r=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:loginEmail.value.trim(),password:loginPassword.value})});const x=await r.json();if(!r.ok)throw new Error(x.error_description||x.msg||'Неверный email или пароль');accessToken=x.access_token;currentUser=x.user;sessionStorage.setItem('growth_token',accessToken);sessionStorage.setItem('growth_user',JSON.stringify(currentUser));await loadProfile()}catch(e){loginError.textContent=e.message;loginError.style.display='block'}}
-async function loadProfile(){const r=await authFetch('/rest/v1/growth_company_users?select=full_name,role,is_active&user_id=eq.'+encodeURIComponent(currentUser.id)+'&limit=1');if(!r.ok)throw new Error('Не удалось определить роль');const a=await r.json();if(!a.length||a[0].is_active===false)throw new Error('Доступ к панели не назначен');currentRole=a[0].role;role.value=currentRole;userName.textContent=a[0].full_name||currentUser.email;userRole.textContent={owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[currentRole]||currentRole;loginScreen.classList.add('hidden');app.classList.remove('hidden');roleApply();applyInputPermissions();await loadFromSupabase()}
+async function loadProfile(){const r=await authFetch('/rest/v1/growth_company_users?select=full_name,role,is_active&user_id=eq.'+encodeURIComponent(currentUser.id)+'&limit=1');if(!r.ok)throw new Error('Не удалось определить роль');const a=await r.json();if(!a.length||a[0].is_active===false)throw new Error('Доступ к панели не назначен');currentRole=a[0].role;role.value=currentRole;userName.textContent=a[0].full_name||currentUser.email;userRole.textContent={owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[currentRole]||currentRole;
+ const inputBtn=document.querySelector('nav button[data-page="input"]');
+ if(inputBtn) inputBtn.textContent=currentRole==='owner'?'Ввод данных':(currentRole==='marketing'?'Ввод маркетинга':'Ввод продаж');loginScreen.classList.add('hidden');app.classList.remove('hidden');roleApply();applyInputPermissions();await loadFromSupabase()}
 async function restoreSession(){accessToken=sessionStorage.getItem('growth_token')||'';try{currentUser=JSON.parse(sessionStorage.getItem('growth_user')||'null')}catch(e){}if(accessToken&&currentUser){try{await loadProfile();return}catch(e){}}sessionStorage.clear();loginScreen.classList.remove('hidden');app.classList.add('hidden')}
 function logout(){sessionStorage.clear();location.reload()}
-function applyInputPermissions(){const ids=['attention','interest','leads','handoff','talks','salesCount'];const allowed=currentRole==='owner'?ids:(currentRole==='marketing'?['attention','interest','leads','handoff']:['talks','salesCount']);ids.forEach(id=>document.getElementById(id).disabled=!allowed.includes(id));reset.style.display=currentRole==='owner'?'inline-block':'none'}
+function applyInputPermissions(){
+ const ids=['attention','interest','leads','handoff','talks','salesCount'];
+ const allowed=currentRole==='owner'
+   ? ids
+   : (currentRole==='marketing'
+      ? ['attention','interest','leads','handoff']
+      : ['talks','salesCount']);
+
+ ids.forEach(id=>{
+   const el=document.getElementById(id);
+   const show=allowed.includes(id);
+   el.disabled=!show;
+   if(el.parentElement) el.parentElement.style.display=show?'block':'none';
+ });
+
+ if(currentRole==='marketing'){
+   inputHint.textContent='Маркетинг вводит только: Внимание, Интерес, Лиды и Передано в продажи.';
+ }else if(currentRole==='sales'){
+   inputHint.textContent='Продажи вводят только: Переговоры и Продажи.';
+ }else{
+   inputHint.textContent='Руководитель видит и при необходимости может корректировать все показатели.';
+ }
+
+ reset.style.display=currentRole==='owner'?'inline-block':'none';
+}
 
 
 const demo={attention:12400,interest:310,leads:48,handoff:18,talks:14,sales:10};
