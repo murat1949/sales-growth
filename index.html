@@ -1007,26 +1007,62 @@ function render(){
 }
 
 async function saveToSupabase(){
-  const payload={
-    p_attention:+attention.value,
-    p_interest:+interest.value,
-    p_leads:+leads.value,
-    p_handoff:+handoff.value,
-    p_talks:+talks.value,
-    p_sales:+salesCount.value,
-    p_role:{owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[currentRole],
-    p_comment:comment.value||''
-  };
-
   save.disabled=true;
   save.textContent='Сохраняю...';
 
   try{
+    /* Сначала берём последние данные из базы.
+       Затем меняем ТОЛЬКО поля текущей роли. */
+    const latestResp=await authFetch('/rest/v1/growth_funnel_today?select=*&limit=1',{cache:'no-store'});
+    if(!latestResp.ok) throw new Error('Не удалось получить текущие данные: HTTP '+latestResp.status);
+    const latestRows=await latestResp.json();
+    if(!latestRows || !latestRows.length) throw new Error('В базе нет текущей записи');
+    const x=latestRows[0];
+
+    const latest={
+      attention:Number(x.attention||0),
+      interest:Number(x.interest||0),
+      leads:Number(x.leads||0),
+      handoff:Number(x.handoff||0),
+      talks:Number(x.talks||0),
+      sales:Number(x.sales||0)
+    };
+
+    const merged={...latest};
+
+    if(currentRole==='marketing'){
+      merged.attention=Number(attention.value||0);
+      merged.interest=Number(interest.value||0);
+      merged.leads=Number(leads.value||0);
+      merged.handoff=Number(handoff.value||0);
+      /* talks и sales сохраняем такими, какие они уже есть в базе */
+    }else if(currentRole==='sales'){
+      merged.talks=Number(talks.value||0);
+      merged.sales=Number(salesCount.value||0);
+      /* attention, interest, leads и handoff НЕ ТРОГАЕМ */
+    }else{
+      merged.attention=Number(attention.value||0);
+      merged.interest=Number(interest.value||0);
+      merged.leads=Number(leads.value||0);
+      merged.handoff=Number(handoff.value||0);
+      merged.talks=Number(talks.value||0);
+      merged.sales=Number(salesCount.value||0);
+    }
+
+    const payload={
+      p_attention:merged.attention,
+      p_interest:merged.interest,
+      p_leads:merged.leads,
+      p_handoff:merged.handoff,
+      p_talks:merged.talks,
+      p_sales:merged.sales,
+      p_role:{owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[currentRole],
+      p_comment:comment.value||''
+    };
+
     const r=await authFetch('/rest/v1/rpc/save_growth_dashboard',{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json'
-      },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
 
@@ -1038,7 +1074,7 @@ async function saveToSupabase(){
     comment.value='';
     await loadFromSupabase();
     setStatus('● данные сохранены',true);
-    alert('Показатели сохранены в Supabase');
+    alert('Сохранено. Данные других ролей не изменены.');
   }catch(e){
     console.error(e);
     setStatus('● ошибка записи',false);
