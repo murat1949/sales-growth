@@ -304,6 +304,27 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
  .history-col small{font-size:9px}
 }
 
+
+/* ===== Alerts screen ===== */
+.alert-item{
+ display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;
+ padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px
+}
+.alert-item:last-child{border-bottom:0}
+.alert-dot{width:11px;height:11px;border-radius:50%;margin-top:4px}
+.alert-critical{background:#ef4444}
+.alert-warning{background:#f59e0b}
+.alert-normal{background:#22c55e}
+.alert-owner{font-size:11px;font-weight:700;color:#475569}
+.alert-box{padding:13px;border-radius:9px;font-size:13px}
+.alert-box-red{background:#fff1f2;border-left:4px solid #ef4444}
+.alert-box-green{background:#ecfdf5;border-left:4px solid #22c55e}
+@media(max-width:700px){
+ #alerts .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .alert-item{grid-template-columns:auto 1fr}
+ .alert-owner{grid-column:2}
+}
+
 </style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
@@ -442,7 +463,25 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   </div>
 </div>
 </section>
-<section id="alerts" class="section"><div class="card"><h3>Автоматические сигналы</h3><div id="alertsView"></div></div></section>
+<section id="alerts" class="section">
+<div class="grid kpis" id="alertKpis"></div>
+
+<div class="card" style="margin-top:13px">
+  <h3>Сигналы руководителю</h3>
+  <div id="alertList"></div>
+</div>
+
+<div class="grid two" style="margin-top:13px">
+  <div class="card">
+    <h3>Главный приоритет сегодня</h3>
+    <div id="alertPriority"></div>
+  </div>
+  <div class="card">
+    <h3>Контроль руководителя</h3>
+    <div id="alertControl"></div>
+  </div>
+</div>
+</section>
 
 <section id="input" class="section"><div class="card"><h3>Обновить показатели</h3><div id="inputHint" class="muted" style="margin-bottom:12px">После «Сохранить» данные записываются в Supabase и сразу обновляют панель.</div>
 <div class="form">
@@ -760,7 +799,61 @@ function renderHistory(){
    Следующая задача — сохранять такие срезы по датам и показывать рост или падение автоматически.</div>`;
 }
 
+
+function renderAlerts(){
+ const ak=document.getElementById('alertKpis');
+ if(!ak) return;
+
+ const metrics=[
+  {name:'Внимание → Интерес',value:+pct(data.attention,data.interest),limit:5,owner:'Маркетинг'},
+  {name:'Интерес → Лид',value:+pct(data.interest,data.leads),limit:20,owner:'Маркетинг'},
+  {name:'Лид → Передано',value:+pct(data.leads,data.handoff),limit:50,owner:'Маркетинг / РОП'},
+  {name:'Передано → Переговоры',value:+pct(data.handoff,data.talks),limit:70,owner:'Продажи'},
+  {name:'Переговоры → Продажа',value:+pct(data.talks,data.sales),limit:50,owner:'Продажи'}
+ ];
+
+ metrics.forEach(x=>{
+   const r=x.value/x.limit;
+   x.level=r<.75?'critical':r<1?'warning':'normal';
+ });
+
+ const critical=metrics.filter(x=>x.level==='critical').length;
+ const warning=metrics.filter(x=>x.level==='warning').length;
+ const normal=metrics.filter(x=>x.level==='normal').length;
+
+ ak.innerHTML=[
+  ['Критично',critical],
+  ['Внимание',warning],
+  ['В норме',normal],
+  ['Всего сигналов',critical+warning]
+ ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="val">${x[1]}</div></div>`).join('');
+
+ const rank={critical:0,warning:1,normal:2};
+ metrics.sort((a,b)=>rank[a.level]-rank[b.level] || (a.value/a.limit)-(b.value/b.limit));
+
+ document.getElementById('alertList').innerHTML=metrics.map(x=>{
+   const label=x.level==='critical'?'Критично':x.level==='warning'?'Внимание':'Норма';
+   return `<div class="alert-item">
+    <span class="alert-dot alert-${x.level}"></span>
+    <div><b>${x.name}</b><br><span class="muted">${x.value.toFixed(1)}% · порог ${x.limit}% · ${label}</span></div>
+    <div class="alert-owner">${x.owner}</div>
+   </div>`;
+ }).join('');
+
+ const worst=metrics[0];
+ document.getElementById('alertPriority').innerHTML=
+   `<div class="alert-box alert-box-red"><b>${worst.name}</b><br>
+   Сейчас ${worst.value.toFixed(1)}% при контрольном пороге ${worst.limit}%.<br><br>
+   <b>Ответственный:</b> ${worst.owner}</div>`;
+
+ const active=critical+warning;
+ document.getElementById('alertControl').innerHTML=
+   `<div class="alert-box ${active?'alert-box-red':'alert-box-green'}"><b>${active?'Есть отклонения':'Критических отклонений нет'}</b><br><br>
+   ${active?'Сегодня нужно разобрать причины по красным и жёлтым участкам, назначить действие и проверить результат в следующем срезе.':'Продолжаем контроль динамики и сравнение с предыдущими периодами.'}</div>`;
+}
+
 function render(){
+ renderAlerts();
  renderHistory();
  renderTeam();
  renderSales();
