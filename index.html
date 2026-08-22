@@ -17,9 +17,10 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 .form{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.btn{border:0;background:var(--blue);color:white;padding:10px 14px;border-radius:9px;font-weight:700;cursor:pointer}.btn.secondary{background:#475569}
 .historybar{height:9px;background:#e2e8f0;border-radius:10px;overflow:hidden}.historybar span{height:100%;display:block;background:var(--blue)}
 @media(max-width:950px){.app{grid-template-columns:1fr}.kpis,.funnel,.two,.three,.form{grid-template-columns:1fr}.stage:not(:last-child):after{display:none}}
-.input-menu{display:block!important;font-weight:700!important;background:#2563eb!important;color:white!important;margin-bottom:8px!important}</style></head><body>
-<div class="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
-<div class="role"><label>Роль</label><select id="role"><option value="owner">Руководитель</option><option value="marketing">Маркетинг</option><option value="sales">Продажи</option></select></div>
+.input-menu{display:block!important;font-weight:700!important;background:#2563eb!important;color:white!important;margin-bottom:8px!important}
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}.login-card{width:100%;max-width:430px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 10px 30px rgba(15,23,42,.08)}.login-card label{display:block;margin:12px 0 5px}.login-card .btn{width:100%;margin-top:16px}.login-error{display:none;margin-top:12px;padding:10px;border-radius:9px;background:#fef2f2;color:#991b1b;font-size:13px}.userbox{background:#1e3653;padding:11px;border-radius:12px;margin-bottom:12px;font-size:13px}.userbox b{display:block}.logout{width:100%;border:1px solid #47627f;background:transparent;color:#dbeafe;padding:9px;border-radius:9px;cursor:pointer;margin-bottom:14px}</style></head><body>
+<div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
+<div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
 <nav>
 <button class="active" data-page="dash">Главная</button><button data-page="input" class="input-menu">Ввод данных</button><button data-page="funnel">Воронка</button>
 <button data-page="marketing" data-roles="owner marketing">Маркетинг</button><button data-page="sales" data-roles="owner sales">Продажи</button><button data-page="team" data-roles="owner">Команда</button>
@@ -86,6 +87,14 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <script>
 const SUPABASE_URL='https://swpnpxhoaxcnllieejsn.supabase.co';
 const SUPABASE_KEY='sb_publishable_IDfG17rqCnpT7CeZairyyg_Sx7agWuu';
+let accessToken='',currentUser=null,currentRole='';
+async function authFetch(path,options={}){const h=Object.assign({'apikey':SUPABASE_KEY},options.headers||{});h.Authorization='Bearer '+(accessToken||SUPABASE_KEY);return fetch(SUPABASE_URL+path,Object.assign({},options,{headers:h}))}
+async function login(){loginError.style.display='none';try{const r=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:loginEmail.value.trim(),password:loginPassword.value})});const x=await r.json();if(!r.ok)throw new Error(x.error_description||x.msg||'Неверный email или пароль');accessToken=x.access_token;currentUser=x.user;sessionStorage.setItem('growth_token',accessToken);sessionStorage.setItem('growth_user',JSON.stringify(currentUser));await loadProfile()}catch(e){loginError.textContent=e.message;loginError.style.display='block'}}
+async function loadProfile(){const r=await authFetch('/rest/v1/growth_company_users?select=full_name,role,is_active&user_id=eq.'+encodeURIComponent(currentUser.id)+'&limit=1');if(!r.ok)throw new Error('Не удалось определить роль');const a=await r.json();if(!a.length||a[0].is_active===false)throw new Error('Доступ к панели не назначен');currentRole=a[0].role;role.value=currentRole;userName.textContent=a[0].full_name||currentUser.email;userRole.textContent={owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[currentRole]||currentRole;loginScreen.classList.add('hidden');app.classList.remove('hidden');roleApply();applyInputPermissions();await loadFromSupabase()}
+async function restoreSession(){accessToken=sessionStorage.getItem('growth_token')||'';try{currentUser=JSON.parse(sessionStorage.getItem('growth_user')||'null')}catch(e){}if(accessToken&&currentUser){try{await loadProfile();return}catch(e){}}sessionStorage.clear();loginScreen.classList.remove('hidden');app.classList.add('hidden')}
+function logout(){sessionStorage.clear();location.reload()}
+function applyInputPermissions(){const ids=['attention','interest','leads','handoff','talks','salesCount'];const allowed=currentRole==='owner'?ids:(currentRole==='marketing'?['attention','interest','leads','handoff']:['talks','salesCount']);ids.forEach(id=>document.getElementById(id).disabled=!allowed.includes(id));reset.style.display=currentRole==='owner'?'inline-block':'none'}
+
 
 const demo={attention:12400,interest:310,leads:48,handoff:18,talks:14,sales:10};
 let data={...demo};
@@ -106,12 +115,7 @@ function setStatus(text, ok=true){
 
 async function loadFromSupabase(){
   try{
-    const url = SUPABASE_URL + '/rest/v1/growth_funnel_today?select=*&limit=1';
-    const r = await fetch(url,{
-      headers:{
-        'apikey': SUPABASE_KEY,
-        'Authorization':'Bearer '+SUPABASE_KEY
-      },
+    const r = await authFetch('/rest/v1/growth_funnel_today?select=*&limit=1',{
       cache:'no-store'
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
@@ -159,7 +163,7 @@ function render(){
 
  alertsView.innerHTML=(c3<40?'<div class="alert red"><b>Красный:</b> в продажи передано менее 40% лидов.</div>':'<div class="alert green">Передача лидов в продажи в норме.</div>')+(c4<40?'<div class="alert">Конверсия отдела продаж ниже 40%.</div>':'<div class="alert green">Конверсия отдела продаж выше контрольного уровня.</div>');
  historyTable.innerHTML='<tr><th>Время</th><th>Роль</th><th>Лиды</th><th>Передано</th><th>Продажи</th><th>Комментарий</th></tr>';
- ['attention','interest','leads','handoff','talks'].forEach(k=>document.getElementById(k).value=data[k]); salesCount.value=data.sales;
+ ['attention','interest','leads','handoff','talks'].forEach(k=>document.getElementById(k).value=data[k]); salesCount.value=data.sales; if(currentRole)applyInputPermissions();
 }
 
 async function saveToSupabase(){
@@ -170,7 +174,7 @@ async function saveToSupabase(){
     p_handoff:+handoff.value,
     p_talks:+talks.value,
     p_sales:+salesCount.value,
-    p_role:{owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[role.value],
+    p_role:{owner:'Руководитель',marketing:'Маркетинг',sales:'Продажи'}[currentRole],
     p_comment:comment.value||''
   };
 
@@ -178,11 +182,9 @@ async function saveToSupabase(){
   save.textContent='Сохраняю...';
 
   try{
-    const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/save_growth_dashboard',{
+    const r=await authFetch('/rest/v1/rpc/save_growth_dashboard',{
       method:'POST',
       headers:{
-        'apikey':SUPABASE_KEY,
-        'Authorization':'Bearer '+SUPABASE_KEY,
         'Content-Type':'application/json'
       },
       body:JSON.stringify(payload)
@@ -219,10 +221,7 @@ reset.onclick=()=>{
 
 const btns=[...document.querySelectorAll('nav button')],secs=[...document.querySelectorAll('.section')];
 btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('active'));b.classList.add('active');secs.forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');ttl.textContent=b.textContent});
-function roleApply(){let r=role.value;btns.forEach(b=>{let a=b.dataset.roles;b.classList.toggle('hidden',a&&!a.split(' ').includes(r))});let act=document.querySelector('nav button.active');if(act.classList.contains('hidden'))btns[0].click()}
-role.onchange=roleApply;
-roleApply();
-render();
-loadFromSupabase();
+function roleApply(){btns.forEach(b=>{let ok=currentRole==='owner'||(currentRole==='marketing'&&['input','marketing'].includes(b.dataset.page))||(currentRole==='sales'&&['input','sales'].includes(b.dataset.page));b.classList.toggle('hidden',!ok)});let a=document.querySelector('nav button.active');if(!a||a.classList.contains('hidden')){let f=btns.find(b=>!b.classList.contains('hidden'));if(f)f.click()}}
+loginBtn.onclick=login;loginPassword.addEventListener('keydown',e=>{if(e.key==='Enter')login()});logoutBtn.onclick=logout;render();restoreSession();
 </script>
 </body></html>
