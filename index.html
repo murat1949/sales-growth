@@ -35,7 +35,21 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <div class="card"><h3>Диагностика</h3><div id="diagnosis"></div></div></div>
 </section>
 
-<section id="funnel" class="section"><div class="card"><h3>Контроль всей цепочки</h3><table id="fullTable"></table></div></section>
+<section id="funnel" class="section">
+<div class="grid kpis" id="funnelKpis"></div>
+<div class="card" style="margin-top:13px">
+  <h3>Воронка продаж сегодня</h3>
+  <div class="funnel" id="funnelDetail"></div>
+</div>
+<div class="grid two" style="margin-top:13px">
+  <div class="card"><h3>Конверсии между этапами</h3><table id="funnelConv"></table></div>
+  <div class="card"><h3>Где теряем клиентов</h3><div id="funnelLoss"></div></div>
+</div>
+<div class="card" style="margin-top:13px">
+  <h3>Ответственность по этапам</h3>
+  <table id="fullTable"></table>
+</div>
+</section>
 
 <section id="marketing" class="section"><div class="grid three">
 <div class="card"><div class="muted">Внимание</div><div class="val" id="mAtt"></div></div>
@@ -174,6 +188,42 @@ function render(){
  let arr=[['Внимание → Интерес',c1],['Интерес → Лид',c2],['Лид → Передано',c3],['Передано → Продажа',c4]];
  let min=arr.reduce((a,b)=>a[1]<b[1]?a:b);
  document.getElementById('diagnosis').innerHTML=`<div class="alert red"><b>Кандидат на узкое место:</b><br>${min[0]} — ${min[1]}%</div><div class="alert green"><b>Принцип:</b><br>Не гадать, а задавать вопрос «почему?» именно там, где цифры проседают.</div>`;
+
+ const funnelStages=[
+   ['attention','Внимание',data.attention],
+   ['interest','Интерес',data.interest],
+   ['leads','Лиды',data.leads],
+   ['handoff','Передано',data.handoff],
+   ['talks','Переговоры',data.talks],
+   ['sales','Продажи',data.sales]
+ ];
+ funnelKpis.innerHTML=[
+   ['Лиды',data.leads],
+   ['Передано',data.handoff],
+   ['Переговоры',data.talks],
+   ['Продажи',data.sales],
+   ['Итоговая конверсия',pct(data.leads,data.sales)+'%']
+ ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="val">${x[1]}</div></div>`).join('');
+
+ funnelDetail.style.gridTemplateColumns='repeat(6,1fr)';
+ funnelDetail.innerHTML=funnelStages.map((x,i)=>`<div class="stage"><strong>${Number(x[2]).toLocaleString('ru-RU')}</strong><b>${x[1]}</b><span>${i===0?'старт':''}</span></div>`).join('');
+
+ const frows=[
+   ['Внимание → Интерес',data.attention,data.interest],
+   ['Интерес → Лид',data.interest,data.leads],
+   ['Лид → Передано',data.leads,data.handoff],
+   ['Передано → Переговоры',data.handoff,data.talks],
+   ['Переговоры → Продажа',data.talks,data.sales]
+ ];
+ funnelConv.innerHTML='<tr><th>Переход</th><th>Было</th><th>Стало</th><th>Конверсия</th><th>Потеря</th></tr>'+
+   frows.map(r=>`<tr><td>${r[0]}</td><td>${r[1].toLocaleString('ru-RU')}</td><td>${r[2].toLocaleString('ru-RU')}</td><td><b>${pct(r[1],r[2])}%</b></td><td>${Math.max(0,r[1]-r[2]).toLocaleString('ru-RU')}</td></tr>`).join('');
+
+ const lossRows=frows.map(r=>({name:r[0],conv:+pct(r[1],r[2]),loss:Math.max(0,r[1]-r[2])}));
+ const worst=lossRows.reduce((a,b)=>a.conv<b.conv?a:b);
+ funnelLoss.innerHTML=`<div class="alert red"><b>Главное узкое место:</b><br>${worst.name}<br>Конверсия ${worst.conv.toFixed(1)}%</div>
+ <div class="alert"><b>Потеря на этом переходе:</b><br>${worst.loss.toLocaleString('ru-RU')} потенциальных клиентов / контактов</div>
+ <div class="alert green"><b>Управленческий вопрос:</b><br>Почему именно на этом этапе происходит наибольшая относительная потеря?</div>`;
+
  document.getElementById('fullTable').innerHTML='<tr><th>Этап</th><th>Количество</th><th>Ответственный</th></tr>'+
  [['Внимание',data.attention,'Таргетолог / SMM'],['Интерес',data.interest,'Маркетинг'],['Лиды',data.leads,'Маркетинг'],['Передано',data.handoff,'Маркетинг / РОП'],['Переговоры',data.talks,'Продажи'],['Продажи',data.sales,'Продажи']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
  mAtt.textContent=data.attention;mInt.textContent=data.interest;mLeads.textContent=data.leads;sHand.textContent=data.handoff;sTalk.textContent=data.talks;sSales.textContent=data.sales;
