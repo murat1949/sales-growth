@@ -420,9 +420,9 @@ function renderGraphicFunnels(){
 function render(){
  renderGraphicFunnels();
  document.getElementById('kpis').innerHTML=names.map(([k,n])=>`<div class="card"><div class="muted">${n}</div><div class="val">${data[k].toLocaleString('ru-RU')}</div></div>`).join('');
- document.getElementById('funnelView').innerHTML=names.map(([k,n])=>`<div class="stage"><strong>${data[k].toLocaleString('ru-RU')}</strong><b>${n}</b><span>${k==='attention'?'старт': ''}</span></div>`).join('');
+ const fv=document.getElementById('funnelView'); if(fv) fv.innerHTML=names.map(([k,n])=>`<div class="stage"><strong>${data[k].toLocaleString('ru-RU')}</strong><b>${n}</b><span>${k==='attention'?'старт': ''}</span></div>`).join('');
  let rows=[['Внимание → Интерес',pct(data.attention,data.interest)],['Интерес → Лид',pct(data.interest,data.leads)],['Лид → Передано',pct(data.leads,data.handoff)],['Передано → Продажа',pct(data.handoff,data.sales)]];
- document.getElementById('convTable').innerHTML='<tr><th>Переход</th><th>Конверсия</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}%</td></tr>`).join('');
+ const ct=document.getElementById('convTable'); if(ct) ct.innerHTML='<tr><th>Переход</th><th>Конверсия</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}%</td></tr>`).join('');
  let c1=+pct(data.attention,data.interest),c2=+pct(data.interest,data.leads),c3=+pct(data.leads,data.handoff),c4=+pct(data.handoff,data.sales);
  let arr=[['Внимание → Интерес',c1],['Интерес → Лид',c2],['Лид → Передано',c3],['Передано → Продажа',c4]];
  let min=arr.reduce((a,b)=>a[1]<b[1]?a:b);
