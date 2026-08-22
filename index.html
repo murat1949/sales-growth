@@ -240,6 +240,30 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   .mkt-stage b{font-size:11px}
 }
 
+
+/* ===== Sales management screen ===== */
+.sales-flow{display:flex;align-items:stretch;gap:8px}
+.sales-stage{
+  flex:1;min-width:0;padding:15px 8px;border-radius:12px;text-align:center;
+  background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff
+}
+.sales-stage strong{display:block;font-size:28px;line-height:1}
+.sales-stage b{display:block;font-size:12px;margin-top:6px}
+.sales-stage small{display:block;font-size:10px;margin-top:5px;opacity:.92}
+.sales-conv{margin:8px 0}
+.sales-conv-head{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:5px}
+.sales-bar{height:9px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.sales-bar>span{display:block;height:100%;background:linear-gradient(90deg,#0f766e,#22c55e);border-radius:999px}
+.sales-action{padding:10px 12px;border-left:4px solid #0f766e;background:#ecfdf5;border-radius:8px;margin:8px 0;font-size:13px}
+@media(max-width:700px){
+  #sales .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #sales .kpis .card:last-child{grid-column:1/-1}
+  .sales-flow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .sales-stage{padding:12px 5px}
+  .sales-stage strong{font-size:24px}
+  .sales-stage b{font-size:11px}
+}
+
 </style></head><body>
 <div id="loginScreen" class="login-screen"><div class="login-card"><h1>Панель роста продаж</h1><div class="muted">Вход сотрудника</div><label>Email</label><input id="loginEmail" type="email"><label>Пароль</label><input id="loginPassword" type="password"><button class="btn" id="loginBtn">Войти</button><div id="loginError" class="login-error"></div></div></div><div class="app hidden" id="app"><aside><div class="brand">Панель роста продаж</div><div class="sub">Методология управляемого роста</div>
 <div class="userbox"><b id="userName">Пользователь</b><span id="userRole">—</span></div><button class="logout" id="logoutBtn">Выйти</button><input type="hidden" id="role" value="owner">
@@ -307,11 +331,30 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 </div>
 </section>
 
-<section id="sales" class="section"><div class="grid three">
-<div class="card"><div class="muted">Получено</div><div class="val" id="sHand"></div></div>
-<div class="card"><div class="muted">Переговоры</div><div class="val" id="sTalk"></div></div>
-<div class="card"><div class="muted">Продажи</div><div class="val" id="sSales"></div></div></div>
-<div class="card" style="margin-top:13px"><h3>Задача продаж</h3><p>Не потерять переданные лиды, быстро обработать, довести до переговоров и сделки. Руководитель видит фактическую конверсию отдела.</p></div></section>
+<section id="sales" class="section">
+<div class="grid kpis" id="salesKpis"></div>
+
+<div class="grid two" style="margin-top:13px">
+  <div class="card">
+    <h3>Путь продаж</h3>
+    <div id="salesFlow" class="sales-flow"></div>
+  </div>
+  <div class="card">
+    <h3>Диагностика продаж</h3>
+    <div id="salesDiagnosis"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:13px">
+  <h3>Конверсии продаж</h3>
+  <div id="salesConversions"></div>
+</div>
+
+<div class="card" style="margin-top:13px">
+  <h3>Что проверить руководителю</h3>
+  <div id="salesActions"></div>
+</div>
+</section>
 
 
 <section id="team" class="section">
@@ -510,7 +553,53 @@ function renderMarketing(){
  document.getElementById('marketingActions').innerHTML=actions.map((x,i)=>`<div class="mkt-action"><b>${i+1}.</b> ${x}</div>`).join('');
 }
 
+
+function renderSales(){
+ const sk=document.getElementById('salesKpis');
+ if(!sk) return;
+ const cHT=+pct(data.handoff,data.talks);
+ const cTS=+pct(data.talks,data.sales);
+ const cHS=+pct(data.handoff,data.sales);
+
+ sk.innerHTML=[
+   ['Передано',data.handoff],
+   ['Переговоры',data.talks],
+   ['Продажи',data.sales],
+   ['Передано → Продажа',cHS.toFixed(1)+'%']
+ ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="val">${typeof x[1]==='number'?x[1].toLocaleString('ru-RU'):x[1]}</div></div>`).join('');
+
+ document.getElementById('salesFlow').innerHTML=[
+   ['Передано',data.handoff,'старт продаж'],
+   ['Переговоры',data.talks,cHT.toFixed(1)+'%'],
+   ['Продажи',data.sales,cTS.toFixed(1)+'%']
+ ].map(x=>`<div class="sales-stage"><strong>${Number(x[1]).toLocaleString('ru-RU')}</strong><b>${x[0]}</b><small>${x[2]}</small></div>`).join('');
+
+ const steps=[
+   {name:'Передано → Переговоры',v:cHT},
+   {name:'Переговоры → Продажа',v:cTS}
+ ];
+ const worst=steps.reduce((a,b)=>a.v<b.v?a:b);
+
+ document.getElementById('salesDiagnosis').innerHTML=
+   `<div class="alert red"><b>Главная зона внимания:</b><br>${worst.name} — ${worst.v.toFixed(1)}%</div>`+
+   `<div class="alert green"><b>Итог отдела продаж:</b><br>${data.sales} продаж из ${data.handoff} переданных лидов (${cHS.toFixed(1)}%).</div>`;
+
+ document.getElementById('salesConversions').innerHTML=steps.map(s=>
+   `<div class="sales-conv"><div class="sales-conv-head"><span>${s.name}</span><b>${s.v.toFixed(1)}%</b></div>`+
+   `<div class="sales-bar"><span style="width:${Math.min(100,s.v)}%"></span></div></div>`
+ ).join('');
+
+ const actions=[];
+ if(cHT<70) actions.push('Проверить скорость первого контакта, дозвоны и дисциплину обработки переданных лидов.');
+ if(cTS<50) actions.push('Проверить качество переговоров, оффер, работу с возражениями и причины отказов.');
+ if(cHS<40) actions.push('Проверить, где именно теряются переданные лиды: до переговоров или уже после них.');
+ if(!actions.length) actions.push('Критических просадок по текущим контрольным порогам не видно. Сравнить конверсию с предыдущим периодом и планом.');
+
+ document.getElementById('salesActions').innerHTML=actions.map((x,i)=>`<div class="sales-action"><b>${i+1}.</b> ${x}</div>`).join('');
+}
+
 function render(){
+ renderSales();
  renderMarketing();
  renderGraphicFunnels();
  document.getElementById('kpis').innerHTML=names.map(([k,n])=>`<div class="card"><div class="muted">${n}</div><div class="val">${data[k].toLocaleString('ru-RU')}</div></div>`).join('');
