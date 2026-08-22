@@ -540,4 +540,34 @@ btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove('active'));b.c
 function roleApply(){btns.forEach(b=>{let ok=currentRole==='owner'||(currentRole==='marketing'&&['input','marketing'].includes(b.dataset.page))||(currentRole==='sales'&&['input','sales'].includes(b.dataset.page));b.classList.toggle('hidden',!ok)});let a=document.querySelector('nav button.active');if(!a||a.classList.contains('hidden')){let f=btns.find(b=>!b.classList.contains('hidden'));if(f)f.click()}}
 loginBtn.onclick=login;loginPassword.addEventListener('keydown',e=>{if(e.key==='Enter')login()});logoutBtn.onclick=logout;render();restoreSession();
 </script>
+
+<script>
+(function(){
+  function cleanMobileMain(){
+    if (window.innerWidth > 700) return;
+    const main = document.getElementById('sec-main');
+    if (!main) return;
+    main.querySelectorAll('.card').forEach(card => {
+      const h3 = card.querySelector('h3');
+      if (!h3) return;
+      const t = h3.textContent.trim();
+      if (t === 'Воронка сегодня' || t === 'Конверсии') card.style.display='none';
+    });
+    main.querySelectorAll('.grid.two').forEach(grid => {
+      const visible=[...grid.children].filter(el => el.style.display !== 'none');
+      if (visible.length === 1) {
+        grid.style.display='block';
+        visible[0].style.width='100%';
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    cleanMobileMain();
+    setTimeout(cleanMobileMain,300);
+    setTimeout(cleanMobileMain,1000);
+  });
+  window.addEventListener('resize',cleanMobileMain);
+})();
+</script>
+
 </body></html>
