@@ -1162,6 +1162,31 @@ async function saveToSupabase(){
       throw new Error('HTTP '+r.status+' '+txt);
     }
 
+    /* После успешного сохранения проверяем первый Telegram-алерт.
+       Пока подключён только переход Внимание → Интерес. */
+    if(currentRole==='marketing' || currentRole==='owner'){
+      try{
+        const t=getThresholds();
+        const ar=await authFetch('/functions/v1/telegram-alert',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            attention:merged.attention,
+            interest:merged.interest,
+            threshold:t.ai
+          })
+        });
+        const alertResult=await ar.json().catch(()=>({}));
+        if(!ar.ok){
+          console.warn('Telegram alert HTTP',ar.status,alertResult);
+        }else{
+          console.log('Telegram alert result',alertResult);
+        }
+      }catch(alertError){
+        console.warn('Telegram alert error',alertError);
+      }
+    }
+
     comment.value='';
     await loadFromSupabase();
     setStatus('● данные сохранены',true);
