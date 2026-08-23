@@ -1122,14 +1122,14 @@ async function saveToSupabase(){
     const merged={...latest};
 
     if(currentRole==='marketing'){
-      merged.attention=Number(attention.value||0);
-      merged.interest=Number(interest.value||0);
-      merged.leads=Number(leads.value||0);
-      merged.handoff=Number(handoff.value||0);
+      if(attention.value.trim()!=='') merged.attention=Number(attention.value);
+      if(interest.value.trim()!=='') merged.interest=Number(interest.value);
+      if(leads.value.trim()!=='') merged.leads=Number(leads.value);
+      if(handoff.value.trim()!=='') merged.handoff=Number(handoff.value);
       /* talks и sales сохраняем такими, какие они уже есть в базе */
     }else if(currentRole==='sales'){
-      merged.talks=Number(talks.value||0);
-      merged.sales=Number(salesCount.value||0);
+      if(talks.value.trim()!=='') merged.talks=Number(talks.value);
+      if(salesCount.value.trim()!=='') merged.sales=Number(salesCount.value);
       /* attention, interest, leads и handoff НЕ ТРОГАЕМ */
     }else{
       merged.attention=Number(attention.value||0);
@@ -1182,6 +1182,14 @@ async function saveToSupabase(){
             lh:t.lh,
             ht:t.ht,
             ts:t.ts
+          },
+          touched:{
+            attention:attention.value.trim()!=='',
+            interest:interest.value.trim()!=='',
+            leads:leads.value.trim()!=='',
+            handoff:handoff.value.trim()!=='',
+            talks:talks.value.trim()!=='',
+            sales:salesCount.value.trim()!==''
           }
         })
       });
