@@ -391,6 +391,25 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 .threshold-grid label{font-size:11px;font-weight:700;color:#475569}
 .threshold-grid input{margin-top:5px;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:9px}
 @media(max-width:700px){.threshold-grid{grid-template-columns:1fr 1fr}.threshold-grid label:last-child{grid-column:1/-1}}
+
+/* ===== Telegram settings ===== */
+.telegram-settings-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.tg-switch-row,.tg-time-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc
+}
+.tg-switch-row span,.tg-time-row span{display:block}
+.tg-switch-row small,.tg-time-row small{display:block;color:#64748b;font-weight:400;margin-top:3px;line-height:1.25}
+.tg-switch-row input[type="checkbox"]{width:22px;height:22px;flex:0 0 auto}
+.tg-time-row input[type="time"]{padding:9px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}
+.tg-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+.btn.secondary{background:#475569}
+@media(max-width:700px){
+  .telegram-settings-grid{grid-template-columns:1fr}
+  .tg-actions{display:grid;grid-template-columns:1fr}
+  .tg-actions .btn{width:100%}
+}
+
 </style></head><body>
 
 
@@ -574,6 +593,29 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <button class="btn" id="saveThresholds" style="margin-top:10px">Сохранить пороги</button>
 <div id="thresholdStatus" class="muted" style="margin-top:8px"></div>
 </div>
+<div class="card" id="telegramSettingsCard" style="margin-top:13px">
+  <h3>Telegram-уведомления</h3>
+  <div class="telegram-settings-grid">
+    <label class="tg-switch-row">
+      <span><b>Срочные алерты</b><small>Отправлять сразу только новые критические отклонения и ухудшения.</small></span>
+      <input id="tgUrgentEnabled" type="checkbox">
+    </label>
+    <label class="tg-switch-row">
+      <span><b>Ежедневная сводка</b><small>Один общий отчёт по воронке в заданное время.</small></span>
+      <input id="tgDailyEnabled" type="checkbox">
+    </label>
+    <label class="tg-time-row">
+      <span><b>Время сводки</b><small>Локальное время руководителя.</small></span>
+      <input id="tgDailyTime" type="time" value="18:00">
+    </label>
+  </div>
+  <div class="tg-actions">
+    <button class="btn" id="saveTelegramSettings">Сохранить настройки</button>
+    <button class="btn secondary" id="sendTelegramNow">Отправить отчёт сейчас</button>
+  </div>
+  <div id="telegramSettingsStatus" class="muted" style="margin-top:8px"></div>
+</div>
+
 <div class="grid two" style="margin-top:13px">
   <div class="card">
     <h3>Главный приоритет сегодня</h3>
@@ -925,6 +967,7 @@ async function loadThresholds(){
       };
     }
     fillThresholdInputs();
+ fillTelegramSettings();
     renderAlerts();
     const st=document.getElementById('thresholdStatus');
     if(st) st.textContent='Пороги загружены из Supabase.';
@@ -973,6 +1016,114 @@ async function saveThresholdValues(){
     if(btn){btn.disabled=false;btn.textContent='Сохранить пороги';}
   }
 }
+
+
+let telegramSettings={
+  urgent_enabled:true,
+  daily_summary_enabled:true,
+  daily_summary_time:'18:00'
+};
+
+async function loadTelegramSettings(){
+  try{
+    const r=await authFetch('/rest/v1/rpc/get_growth_telegram_settings',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:'{}'
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+await r.text());
+    const x=await r.json();
+    telegramSettings={
+      urgent_enabled:x?.urgent_enabled!==false,
+      daily_summary_enabled:x?.daily_summary_enabled!==false,
+      daily_summary_time:x?.daily_summary_time || '18:00'
+    };
+    fillTelegramSettings();
+    const st=document.getElementById('telegramSettingsStatus');
+    if(st) st.textContent='Настройки загружены из Supabase.';
+  }catch(e){
+    console.warn('Telegram settings load',e);
+    fillTelegramSettings();
+  }
+}
+
+function fillTelegramSettings(){
+  const card=document.getElementById('telegramSettingsCard');
+  if(card) card.style.display=currentRole==='owner'?'block':'none';
+  const a=document.getElementById('tgUrgentEnabled');
+  const d=document.getElementById('tgDailyEnabled');
+  const t=document.getElementById('tgDailyTime');
+  if(a) a.checked=!!telegramSettings.urgent_enabled;
+  if(d) d.checked=!!telegramSettings.daily_summary_enabled;
+  if(t) t.value=telegramSettings.daily_summary_time || '18:00';
+}
+
+async function saveTelegramSettingsValues(){
+  const btn=document.getElementById('saveTelegramSettings');
+  const urgent=!!document.getElementById('tgUrgentEnabled')?.checked;
+  const daily=!!document.getElementById('tgDailyEnabled')?.checked;
+  const time=document.getElementById('tgDailyTime')?.value || '18:00';
+  if(btn){btn.disabled=true;btn.textContent='Сохраняю...';}
+  try{
+    const r=await authFetch('/rest/v1/rpc/save_growth_telegram_settings',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        p_urgent_enabled:urgent,
+        p_daily_summary_enabled:daily,
+        p_daily_summary_time:time
+      })
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+await r.text());
+    telegramSettings={
+      urgent_enabled:urgent,
+      daily_summary_enabled:daily,
+      daily_summary_time:time
+    };
+    const st=document.getElementById('telegramSettingsStatus');
+    if(st) st.textContent='Настройки сохранены в Supabase.';
+    alert('Настройки Telegram сохранены');
+  }catch(e){
+    console.error(e);
+    alert('Не удалось сохранить настройки: '+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Сохранить настройки';}
+  }
+}
+
+async function sendTelegramSummaryNow(){
+  const btn=document.getElementById('sendTelegramNow');
+  if(btn){btn.disabled=true;btn.textContent='Отправляю...';}
+  try{
+    const t=getThresholds();
+    const r=await authFetch('/functions/v1/telegram-alert',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'summary',
+        attention:data.attention,
+        interest:data.interest,
+        leads:data.leads,
+        handoff:data.handoff,
+        talks:data.talks,
+        sales:data.sales,
+        thresholds:{ai:t.ai,il:t.il,lh:t.lh,ht:t.ht,ts:t.ts},
+        force_summary:true
+      })
+    });
+    const x=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+JSON.stringify(x));
+    const st=document.getElementById('telegramSettingsStatus');
+    if(st) st.textContent='Отчёт отправлен в Telegram.';
+    alert('Отчёт отправлен в Telegram');
+  }catch(e){
+    console.error(e);
+    alert('Не удалось отправить отчёт: '+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Отправить отчёт сейчас';}
+  }
+}
+
 
 function renderAlerts(){
  const ak=document.getElementById('alertKpis');
@@ -1325,6 +1476,7 @@ logoutBtn.onclick=()=>{sessionStorage.removeItem('sales_growth_demo_role');locat
    accessToken='';
    await loadFromSupabase();
    await loadThresholds();
+   await loadTelegramSettings();
 
    const target=currentRole==='marketing'?'marketing':currentRole==='sales'?'sales':'main';
    const nav=document.querySelector(`nav button[data-page="${target}"]`);
@@ -1336,5 +1488,9 @@ logoutBtn.onclick=()=>{sessionStorage.removeItem('sales_growth_demo_role');locat
 </script>
 
 <script>
-document.addEventListener('click',e=>{if(e.target&&e.target.id==='saveThresholds')saveThresholdValues()});
+document.addEventListener('click',e=>{
+  if(e.target&&e.target.id==='saveThresholds') saveThresholdValues();
+  if(e.target&&e.target.id==='saveTelegramSettings') saveTelegramSettingsValues();
+  if(e.target&&e.target.id==='sendTelegramNow') sendTelegramSummaryNow();
+});
 </script></body></html>
