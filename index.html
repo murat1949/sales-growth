@@ -1162,29 +1162,37 @@ async function saveToSupabase(){
       throw new Error('HTTP '+r.status+' '+txt);
     }
 
-    /* После успешного сохранения проверяем первый Telegram-алерт.
-       Пока подключён только переход Внимание → Интерес. */
-    if(currentRole==='marketing' || currentRole==='owner'){
-      try{
-        const t=getThresholds();
-        const ar=await authFetch('/functions/v1/telegram-alert',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            attention:merged.attention,
-            interest:merged.interest,
-            threshold:t.ai
-          })
-        });
-        const alertResult=await ar.json().catch(()=>({}));
-        if(!ar.ok){
-          console.warn('Telegram alert HTTP',ar.status,alertResult);
-        }else{
-          console.log('Telegram alert result',alertResult);
-        }
-      }catch(alertError){
-        console.warn('Telegram alert error',alertError);
+    /* После успешного сохранения проверяем всю воронку по всем 5 порогам.
+       Работает и для Маркетинга, и для Продаж, и для Руководителя. */
+    try{
+      const t=getThresholds();
+      const ar=await authFetch('/functions/v1/telegram-alert',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          attention:merged.attention,
+          interest:merged.interest,
+          leads:merged.leads,
+          handoff:merged.handoff,
+          talks:merged.talks,
+          sales:merged.sales,
+          thresholds:{
+            ai:t.ai,
+            il:t.il,
+            lh:t.lh,
+            ht:t.ht,
+            ts:t.ts
+          }
+        })
+      });
+      const alertResult=await ar.json().catch(()=>({}));
+      if(!ar.ok){
+        console.warn('Telegram alert HTTP',ar.status,alertResult);
+      }else{
+        console.log('Telegram alert result',alertResult);
       }
+    }catch(alertError){
+      console.warn('Telegram alert error',alertError);
     }
 
     comment.value='';
