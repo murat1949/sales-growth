@@ -386,6 +386,11 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 }
 #simpleLoginError{min-height:20px;margin-top:9px;color:#b91c1c;font-size:13px}
 
+
+.threshold-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.threshold-grid label{font-size:11px;font-weight:700;color:#475569}
+.threshold-grid input{margin-top:5px;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:9px}
+@media(max-width:700px){.threshold-grid{grid-template-columns:1fr 1fr}.threshold-grid label:last-child{grid-column:1/-1}}
 </style></head><body>
 
 
@@ -556,6 +561,19 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   <div id="alertList"></div>
 </div>
 
+<div class="card" id="thresholdSettings" style="margin-top:13px">
+<h3>Настройка порогов</h3>
+<div class="muted" style="margin-bottom:10px">Минимальная допустимая конверсия. Настраивает руководитель.</div>
+<div class="threshold-grid">
+<label>Внимание → Интерес<input id="thrAI" type="number" min="0" max="100" step="0.1"></label>
+<label>Интерес → Лид<input id="thrIL" type="number" min="0" max="100" step="0.1"></label>
+<label>Лид → Передано<input id="thrLH" type="number" min="0" max="100" step="0.1"></label>
+<label>Передано → Переговоры<input id="thrHT" type="number" min="0" max="100" step="0.1"></label>
+<label>Переговоры → Продажа<input id="thrTS" type="number" min="0" max="100" step="0.1"></label>
+</div>
+<button class="btn" id="saveThresholds" style="margin-top:10px">Сохранить пороги</button>
+<div id="thresholdStatus" class="muted" style="margin-top:8px"></div>
+</div>
 <div class="grid two" style="margin-top:13px">
   <div class="card">
     <h3>Главный приоритет сегодня</h3>
@@ -885,17 +903,34 @@ function renderHistory(){
 }
 
 
+const DEFAULT_THRESHOLDS={ai:5,il:20,lh:50,ht:70,ts:50};
+function getThresholds(){try{return {...DEFAULT_THRESHOLDS,...JSON.parse(localStorage.getItem('sales_growth_thresholds')||'{}')}}catch(e){return {...DEFAULT_THRESHOLDS}}}
+function fillThresholdInputs(){
+ const t=getThresholds(), map={thrAI:t.ai,thrIL:t.il,thrLH:t.lh,thrHT:t.ht,thrTS:t.ts};
+ Object.entries(map).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
+ const box=document.getElementById('thresholdSettings');if(box)box.style.display=currentRole==='owner'?'block':'none';
+}
+function saveThresholdValues(){
+ const ids={ai:'thrAI',il:'thrIL',lh:'thrLH',ht:'thrHT',ts:'thrTS'},t={};
+ for(const [k,id] of Object.entries(ids))t[k]=Number(document.getElementById(id).value);
+ if(Object.values(t).some(v=>!Number.isFinite(v)||v<0||v>100)){alert('Порог должен быть от 0 до 100%');return}
+ localStorage.setItem('sales_growth_thresholds',JSON.stringify(t));
+ document.getElementById('thresholdStatus').textContent='Пороги сохранены.';
+ renderAlerts();
+}
 function renderAlerts(){
  const ak=document.getElementById('alertKpis');
  if(!ak) return;
 
+ const t=getThresholds();
  const metrics=[
-  {name:'Внимание → Интерес',value:+pct(data.attention,data.interest),limit:5,owner:'Маркетинг'},
-  {name:'Интерес → Лид',value:+pct(data.interest,data.leads),limit:20,owner:'Маркетинг'},
-  {name:'Лид → Передано',value:+pct(data.leads,data.handoff),limit:50,owner:'Маркетинг / РОП'},
-  {name:'Передано → Переговоры',value:+pct(data.handoff,data.talks),limit:70,owner:'Продажи'},
-  {name:'Переговоры → Продажа',value:+pct(data.talks,data.sales),limit:50,owner:'Продажи'}
+  {name:'Внимание → Интерес',value:+pct(data.attention,data.interest),limit:t.ai,owner:'Маркетинг'},
+  {name:'Интерес → Лид',value:+pct(data.interest,data.leads),limit:t.il,owner:'Маркетинг'},
+  {name:'Лид → Передано',value:+pct(data.leads,data.handoff),limit:t.lh,owner:'Маркетинг / РОП'},
+  {name:'Передано → Переговоры',value:+pct(data.handoff,data.talks),limit:t.ht,owner:'Продажи'},
+  {name:'Переговоры → Продажа',value:+pct(data.talks,data.sales),limit:t.ts,owner:'Продажи'}
  ];
+ fillThresholdInputs();
 
  metrics.forEach(x=>{
    const r=x.value/x.limit;
@@ -1202,4 +1237,6 @@ logoutBtn.onclick=()=>{sessionStorage.removeItem('sales_growth_demo_role');locat
 })();
 </script>
 
-</body></html>
+<script>
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='saveThresholds')saveThresholdValues()});
+</script></body></html>
