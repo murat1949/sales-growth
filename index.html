@@ -440,7 +440,7 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
 <nav>
 <button class="active" data-page="dash">Главная</button><button data-page="input" class="input-menu">Ввод данных</button><button data-page="funnel">Воронка</button>
 <button data-page="marketing" data-roles="owner marketing">Маркетинг</button><button data-page="sales" data-roles="owner sales">Продажи</button><button data-page="team" data-roles="owner">Команда</button>
-<button data-page="history">История</button><button data-page="alerts" data-roles="owner">Алерты</button>
+<button data-page="history">История</button><button data-page="alerts" data-roles="owner">Сигналы</button><button id="telegramReportMenuBtn" data-roles="owner">Отчёт в Telegram</button>
 </nav></aside><main>
 <div class="top"><div><h1 id="ttl">Главная</h1><div class="muted">Живая версия · данные загружаются из Supabase</div></div><div class="pill">● система активна</div></div>
 
@@ -611,7 +611,6 @@ h1{margin:0;font-size:27px}.muted{color:var(--muted);font-size:13px}.pill{backgr
   </div>
   <div class="tg-actions">
     <button class="btn" id="saveTelegramSettings">Сохранить настройки</button>
-    <button class="btn secondary" id="sendTelegramNow">Отправить отчёт сейчас</button>
   </div>
   <div id="telegramSettingsStatus" class="muted" style="margin-top:8px"></div>
 </div>
@@ -1092,8 +1091,8 @@ async function saveTelegramSettingsValues(){
 }
 
 async function sendTelegramSummaryNow(){
-  const btn=document.getElementById('sendTelegramNow');
-  if(btn){btn.disabled=true;btn.textContent='Отправляю...';}
+  const btn=document.getElementById('telegramReportMenuBtn');
+  if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='Отправляю...';}
   try{
     const t=getThresholds();
     const r=await authFetch('/functions/v1/telegram-alert',{
@@ -1120,7 +1119,7 @@ async function sendTelegramSummaryNow(){
     console.error(e);
     alert('Не удалось отправить отчёт: '+e.message);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='Отправить отчёт сейчас';}
+    if(btn){btn.disabled=false;btn.textContent=btn.dataset.oldText||'Отчёт в Telegram';}
   }
 }
 
@@ -1491,6 +1490,6 @@ logoutBtn.onclick=()=>{sessionStorage.removeItem('sales_growth_demo_role');locat
 document.addEventListener('click',e=>{
   if(e.target&&e.target.id==='saveThresholds') saveThresholdValues();
   if(e.target&&e.target.id==='saveTelegramSettings') saveTelegramSettingsValues();
-  if(e.target&&e.target.id==='sendTelegramNow') sendTelegramSummaryNow();
+  if(e.target&&e.target.id==='telegramReportMenuBtn') sendTelegramSummaryNow();
 });
 </script></body></html>
